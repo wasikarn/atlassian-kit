@@ -8,6 +8,11 @@ Pre-`1.0.0`: breaking changes may land in any `0.x` release.
 This file starts at `0.1.18` — releases before that predate the changelog. See
 `git log` for the full history back to `0.1.0`.
 
+## [0.1.72] — 2026-11-19
+Re-release bump: 0.1.71's second commit (`c89eb12`, percent-decoded dot refusal) landed after
+`claude plugin update` had already registered 0.1.71, so the cache skipped it — the update gate
+compares version numbers, not commits. No code change; the 0.1.71 entry above covers both commits.
+
 ## [0.1.71] — 2026-11-19
 **Fix: version-edit `--release-date` never applied; percent-encoded dot segments refused.** The plan
 stored the field under the wire name `releaseDate`, so `apply`'s re-validation (which re-runs the
