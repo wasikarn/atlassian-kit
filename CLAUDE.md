@@ -26,8 +26,8 @@ python3 skills/acli/scripts/md2adf.py somefile.md | python3 skills/acli/scripts/
 - `hooks/acli-guard.py` (+ `hooks.json`, `test_acli_guard.py`, `testdata/`) — PreToolUse guard
   that enforces that rule for every subagent while the plugin is enabled, for acli commands and
   Atlassian MCP tools: deny unless provably a read; main-thread writes prompt. Its corpora are
-  the attack-proposal sets from 0.1.42 (`corpus.tsv`, `multi/`, `tools.json`) and 0.1.45
-  (`mcp.json`); a new bypass or over-block becomes a row there first. A live copy runs
+  the attack-proposal sets from 0.1.42 (`corpus.tsv`, `multi/`, `tools.json`), 0.1.45
+  (`mcp.json`) and 0.1.68 (the direct-REST scripts, 3 rows); a new bypass or over-block becomes a row there first. A live copy runs
   user-level from the operator's dotfiles; change both (script and matcher). Where either is
   installed, the test suite fails until `~/.claude/hooks/acli-guard.py` and the
   `~/.claude/settings.json` acli-guard entry both exist and match.

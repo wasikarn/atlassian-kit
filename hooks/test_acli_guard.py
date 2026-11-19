@@ -54,6 +54,7 @@ MAIN_THREAD = [
     ("ask", "acli jira workitem assign --key PROJ-558 --assignee @me"),
     ("ask", "bash skills/acli/scripts/acli-edit.sh PROJ-1 d.md"),
     ("ask", 'acli feedback -s "bug" -d "details"'),
+    ("ask", "python3 acli-rest-write.py plan page-create --space APPR --title T --body-adf b.json"),
     ("ask", "cd /tmp && acli jira workitem edit --from-json p.json --yes"),
     ("allow", "acli jira workitem view PROJ-1 --json"),
     ("allow", 'git commit -m "chore: refresh acli reference to 1.3.40-stable"'),

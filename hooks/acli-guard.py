@@ -32,6 +32,10 @@ import sys
 CAND = re.compile(r"(?<![\w.-])acli(?![\w./-])")
 # The four wrappers that write (both skills ship copies under these names).
 WRAP = re.compile(r"acli-(edit|new|set-desc|assign)\.sh")
+# The skill's direct-REST scripts: neither matches CAND (hyphen-joined), so name them.
+# rest-get is GET-only by construction; rest-write mutates.
+REST = re.compile(r"acli-rest-(get|write)\.py")
+RESTW = re.compile(r"acli-rest-write\.py")
 VERB = re.compile(r"^[a-z][a-z0-9-]*$")
 WRITE = {
     "create", "create-bulk", "edit", "transition", "assign", "delete", "clone", "archive",
@@ -164,8 +168,10 @@ def _split_pipeline(t):
 
 def _read_safe(cmd):
     """True only for acli reads in the narrow grammar; cmd is already lowercased."""
-    if WRAP.search(cmd):
+    if WRAP.search(cmd) or RESTW.search(cmd):
         return False
+    if REST.search(cmd):  # rest-get is GET-only by construction
+        return True
     segs = _split_pipeline(cmd)
     if segs is None:
         return False
@@ -190,7 +196,7 @@ def _read_safe(cmd):
 
 
 def _write_signal(text):
-    return bool(WRAP.search(text) or (CAND.search(text) and WSIG.search(text)) or PSIG.search(text))
+    return bool(WRAP.search(text) or RESTW.search(text) or (CAND.search(text) and WSIG.search(text)) or PSIG.search(text))
 
 
 def decide(d):
@@ -209,13 +215,13 @@ def decide(d):
     ti = d.get("tool_input")
     text = "\n".join(_strings(ti)).lower()
     try:
-        if not CAND.search(text) and not WRAP.search(text):
+        if not CAND.search(text) and not WRAP.search(text) and not REST.search(text):
             return "allow"
         cmd = ti.get("command") if isinstance(ti, dict) else None
         if d.get("tool_name") in SHELL_TOOLS and isinstance(cmd, str):
             c = cmd.lower()
             # Only `command` runs; a mention only in free text (`description`) is no call to acli.
-            if not CAND.search(c) and not WRAP.search(c) or _read_safe(c):
+            if not CAND.search(c) and not WRAP.search(c) and not REST.search(c) or _read_safe(c):
                 return "allow"
             text = c  # judge the write signal on what runs, not on the description
         if sub:
