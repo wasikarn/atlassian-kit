@@ -1,0 +1,27 @@
+# The repo's guardrail: exactly the local checks in CLAUDE.md § Commands, run on every push.
+name: check
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: python3 -m py_compile skills/*/scripts/*.py hooks/*.py
+      - run: 'for f in skills/*/scripts/*.sh; do bash -n "$f"; done'
+      - name: ADF round-trip
+        run: |
+          printf '# sample\n\n- a\n- b\n' > "$RUNNER_TEMP/roundtrip.md"
+          python3 skills/acli/scripts/md2adf.py "$RUNNER_TEMP/roundtrip.md" \
+            | python3 skills/acli/scripts/adf2md.py -
+      # suites exit non-zero on their own; the loop reports and fails the job
+      - name: test suites
+        run: |
+          fail=0
+          for t in skills/*/scripts/test_*.py hooks/test_*.py; do
+            python3 "$t" || { echo "FAILED: $t"; fail=1; }
+          done
+          exit $fail

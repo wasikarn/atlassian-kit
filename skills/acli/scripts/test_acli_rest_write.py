@@ -1186,6 +1186,50 @@ def test_version_edit_round_trips_a_release_date_edit():
     assert state["v"]["releaseDate"] == "2027-01-31"
 
 
+# --- the re-validation invariant: apply re-runs each validator on stored args --
+
+def _stored_args_for_every_operation():
+    # one minimal, valid call per writable operation; page-fetch is planOnly and never applies
+    seeds = {
+        "page-create": ({"space": "APPR", "title": "seed", "body-adf": "seed.adf"}, ()),
+        "issue-set": ({"key": "APPR-1", "priority": "High"}, ()),
+        "version-create": ({"project": "APPR", "name": "seed"}, ()),
+        "version-edit": ({"id": "18329", "released": "true", "archived": "false",
+                          "release-date": "2030-01-01"}, ()),
+        "version-delete": ({"id": "18329"}, ()),
+        "page-update": ({"base": "seed.base.json", "body-adf": "seed.adf.json"}, ()),
+    }
+    assert set(seeds) == set(rw.OPERATIONS) - {"page-fetch"}, \
+        "every writable operation needs a seed here (add one with the operation)"
+    return [(name, flags, pos) for name, (flags, pos) in sorted(seeds.items())]
+
+
+def test_every_operation_validates_its_own_stored_args():
+    # the stored-key-vs-CLI-key class (0.1.67 --allow-node-loss, 0.1.71 --release-date): a validator
+    # stored an arg under its REST wire name and apply's re-validation refused it. Invariant:
+    # whatever validate() returns must pass unchanged through validate() again — the exact shape
+    # apply runs. A future operation that breaks this fails here, not in review.
+    for op_name, flags, pos in _stored_args_for_every_operation():
+        op = rw.OPERATIONS[op_name]
+        stored = op["validate"](flags, pos)
+        assert isinstance(stored, dict), op_name
+        assert op["validate"](stored, ()) == stored, op_name
+
+
+def test_applys_re_validation_refuses_a_key_no_validator_knows():
+    # proves the trap actually fires: an unknown key in stored args must be refused, so a
+    # wire-name slip cannot pass apply's re-validation silently
+    for op_name, flags, pos in _stored_args_for_every_operation():
+        op = rw.OPERATIONS[op_name]
+        tampered = dict(op["validate"](flags, pos))
+        tampered["wireNameTrap"] = "x"
+        try:
+            op["validate"](tampered, ())
+        except rw.Fatal:
+            continue
+        raise AssertionError(f"{op_name} re-validated a key no validator knows")
+
+
 if __name__ == "__main__":
     failed = 0
     tests = [(n, f) for n, f in sorted(globals().items()) if n.startswith("test_") and callable(f)]

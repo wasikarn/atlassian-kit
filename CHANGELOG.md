@@ -8,6 +8,16 @@ Pre-`1.0.0`: breaking changes may land in any `0.x` release.
 This file starts at `0.1.18` — releases before that predate the changelog. See
 `git log` for the full history back to `0.1.0`.
 
+## [0.1.73] — 2026-11-19
+**CI guardrail + the re-validation invariant test.** The repo had no automated check on push — tests ran
+only by hand. `.github/workflows/ci.yml` now replays the CLAUDE.md § Commands checks on every push and
+PR: `py_compile`, `bash -n`, one `md2adf`/`adf2md` round-trip, and every test suite (exit non-zero on a
+failure; the user-level guard test self-skips where the dotfiles install is absent, so CI passes
+clean). 78 write tests: two new generic tests pin the re-validation invariant — whatever a validator
+returns must pass unchanged through `validate()` again (the shape `apply` runs; the stored-key-vs-CLI-key
+class that bit 0.1.67 and 0.1.71), plus a trap test proving an unknown key in stored args is refused.
+`version-edit`'s seed exercises `--release-date`, so the 0.1.71 bug is red at the invariant test too.
+
 ## [0.1.72] — 2026-11-19
 Re-release bump: 0.1.71's second commit (`c89eb12`, percent-decoded dot refusal) landed after
 `claude plugin update` had already registered 0.1.71, so the cache skipped it — the update gate
