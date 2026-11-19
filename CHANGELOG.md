@@ -8,6 +8,13 @@ Pre-`1.0.0`: breaking changes may land in any `0.x` release.
 This file starts at `0.1.18` — releases before that predate the changelog. See
 `git log` for the full history back to `0.1.0`.
 
+## [0.1.66] — 2026-11-19
+**Docs name the write script.** `acli/SKILL.md` § "When acli can't" now documents `acli-rest-write.py`
+(plan/apply, exit codes, tokens), and the write rows — Confluence page create/update, priority/
+environment at create, parent, fixVersion — plus `jira-content` 5b, `confluence-content` Step 5,
+`README.md` and both preview-then-stop agents point at it. The rows state plainly that the first live
+write is blocked by missing site permissions (admin matter) and that agents stop after the preview.
+
 ## [0.1.65] — 2026-11-19
 **`acli-rest-write.py` phase 4: `page-fetch` and `page-update`.** `page-fetch` (top-level command,
 read-only) writes `page-<id>-v<N>.adf.json` and `page-<id>-v<N>.base.json` (pageId, version, title,
