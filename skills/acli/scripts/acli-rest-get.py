@@ -144,6 +144,8 @@ def parse_args(args):
                 or (rest[0] == "confluence" and not path.startswith("/wiki/api/v2/")):
             raise Fatal(f"not an api path: path must start with /rest/api/3/ (jira) or /wiki/api/v2/ "
                         f"(confluence), alphanumerics + ?&=%,/ only: {path!r}")
+        if "." in path or "." in urllib.parse.unquote(path):
+            raise Fatal(f"not an api path: dots are not allowed in or decoded into it: {path!r}")
         product = rest[0]
         return (lambda opener, run, env_file=ENV_FILE: read_session(opener, run, env_file, product)), \
             api_read, (rest[1],)

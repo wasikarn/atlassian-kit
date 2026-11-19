@@ -415,6 +415,13 @@ def test_api_refuses_dot_traversal_even_inside_the_prefix():
         assert op.calls == [], path
 
 
+def test_api_refuses_percent_encoded_dot_segments():
+    for path in ("/rest/api/3/%2e%2e/x", "/wiki/api/v2/page%2E1"):
+        code, _, err, op = run_main(["api", "jira" if path.startswith("/rest") else "confluence", path], [])
+        assert code == 1 and "not an api path" in err, (path, err)
+        assert op.calls == [], path
+
+
 def test_api_accepts_comma_and_percent_params():
     env = ENV_OK + f"ACLI_REST_WRITE_SITE={HOST}\nACLI_REST_WRITE_EMAIL={EMAIL}\nACLI_REST_WRITE_CONFLUENCE_TOKEN=conf-tok\n"
     cases = [  # (product, path, expected URL)
