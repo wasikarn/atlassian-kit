@@ -1024,6 +1024,68 @@ def test_page_fetch_takes_no_flags():
     assert op.calls == []
 
 
+# --- step-6 whole-picture fixes (0.1.68) ----------------------------------------
+
+def test_env_file_flag_reads_its_own_file_for_the_alternate_target():
+    prod = env_file(ENV_OK)
+    other = env_file(ENV_OK.replace(HOST, "scratch-site.atlassian.net"))
+    routes = [("https://scratch-site.atlassian.net/_edge/tenant_info", lambda r: json.dumps({"cloudId": CID})),
+              (f"{JIRA}/rest/api/3/issue/DEMO-1", lambda r: json.dumps({"summary": "old title"}))]
+    code, out, err, op = run(["plan", "fake-set", "--key", "DEMO-1", "--env-file", str(other)], routes, env=prod)
+    assert code == 0, err
+    assert "ALTERNATE TARGET scratch-site.atlassian.net" in out
+
+
+def test_apply_exit_3_when_the_read_back_returns_a_non_dict_body():
+    code, out, err, _ = plan_for()
+    path, conf = request_path(out), confirm_of(out)
+    gets, sent = {"n": 0}, []
+
+    def issue(req):
+        if req.get_method() == "PUT":
+            sent.append(req.data)
+            return json.dumps({"ok": True})
+        gets["n"] += 1
+        if gets["n"] == 1:
+            return json.dumps({"summary": "old title"})
+        return "[]"  # a JSON list where the read-back expects an object
+
+    code, out2, err2, op = run(["apply", str(path), "--confirm", conf],
+                               [tenant_route(), (f"{JIRA}/rest/api/3/issue/DEMO-1", issue)])
+    assert code == 3, err2
+    assert len(sent) == 1
+    assert "SENT BUT UNVERIFIED" in err2
+    assert "Traceback" not in err2, "an unguarded shape error must not leak a traceback"
+
+
+def test_apply_refuses_unknown_flags_on_the_apply_line():
+    code, out, err, _ = plan_for()
+    path, conf = request_path(out), confirm_of(out)
+    code, out2, err2, op = run(["apply", str(path), "--confirm", conf, "--bogus", "1"],
+                               [tenant_route(), (f"{JIRA}/rest/api/3/issue/DEMO-1",
+                                                 lambda r: json.dumps({"summary": "old title"}))])
+    assert code == 1 and "unknown flag" in err2
+    assert not any(r.get_method() in ("PUT", "POST") for r in op.calls)
+
+
+def test_stray_positionals_are_fatal_for_the_flagged_operations():
+    code, out, err, op = run_issue_set(["--priority", "High", "APPR-1"], jira_routes())
+    assert code == 1 and "positional" in err
+    assert op.calls == []
+
+
+def test_allow_node_loss_rejects_the_camel_case_synonym():
+    d2, base_abs, edited_path, old2 = _planned_update(LIVE_PAGE, EDITED_ADD_LINE)
+    try:
+        code, out, err, op = run(["plan", "page-update", "--base", str(base_abs), "--body-adf", str(edited_path),
+                                  "--allowNodeLoss", "extension"],
+                                 [(CONF, lambda req: json.dumps(LIVE_PAGE))] + [tenant_route()], env=env_conf())
+        assert code == 1 and "unknown flag" in err
+        assert op.calls == []
+    finally:
+        os.chdir(old2)
+
+
 if __name__ == "__main__":
     failed = 0
     tests = [(n, f) for n, f in sorted(globals().items()) if n.startswith("test_") and callable(f)]

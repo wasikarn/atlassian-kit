@@ -22,8 +22,9 @@ Do not re-run `apply` at 3 before checking.
 Credentials come from a mode-600 env file: ACLI_REST_WRITE_SITE, ACLI_REST_WRITE_EMAIL,
 ACLI_REST_WRITE_JIRA_TOKEN, ACLI_REST_WRITE_CONFLUENCE_TOKEN. The default file is ~/.claude/atlassian.env
 and must agree with `acli jira auth status`. --env-file names an alternate target (a test site); it must
-be a different site than acli's, and the preview labels it ALTERNATE TARGET. The acli-guard hook sees
-every call of this script; approving a preview covers calls made through it and nothing else.
+be a different site than acli's, and the preview labels it ALTERNATE TARGET. The acli-guard hook
+denies every subagent call of this script; approving a preview covers calls made through it and
+nothing else.
 Operations: Confluence page-create / page-fetch (read-only; writes the base+adf files) / page-update;
 Jira issue-set / version-create.
 """
@@ -92,6 +93,8 @@ def _conf_paged(get, path, params):
 
 
 def _validate_page_create(flags, pos=()):
+    if pos:
+        raise Fatal(f"page-create takes no positional arguments: {pos[0]!r}")
     _check_flags(flags, {"space", "title", "parent", "body-adf"}, "page-create")
     for f in ("space", "title", "parent", "body-adf"):
         _one(flags, f)
@@ -198,25 +201,27 @@ def _check_flags(flags, known, op):
 def resolve_target(opener, run, flags, env_file, product):
     """Validate the target before any token is used. Return (label, host, email, cid, token, get)."""
     host, email = acli_identity(run)
-    env = read_env_file(env_file)
-    if "env-file" in flags:
+    alternate = pathlib.Path(_one(flags, "env-file")) if "env-file" in flags else None
+    used = alternate or env_file
+    env = read_env_file(used)
+    if alternate is not None:
         thost = env.get("ACLI_REST_WRITE_SITE", "")
         if not HOST_RE.match(thost):
-            raise Fatal(f"ACLI_REST_WRITE_SITE in {env_file} is not a *.atlassian.net host")
+            raise Fatal(f"ACLI_REST_WRITE_SITE in {alternate} is not a *.atlassian.net host")
         if thost == host:
-            raise Fatal(f"the --env-file target is the same site as acli's; refusing to treat it as an alternate target")
-        temail = env.get("ACLI_REST_WRITE_EMAIL", "")
-        label = f"ALTERNATE TARGET {thost}"
+            raise Fatal(f"the alternate target in {alternate} is the same site as acli's; refusing "
+                        f"to treat it as an alternate target")
+        temail, label = env.get("ACLI_REST_WRITE_EMAIL", ""), f"ALTERNATE TARGET {thost}"
     else:
         if env.get("ACLI_REST_WRITE_SITE") != host or env.get("ACLI_REST_WRITE_EMAIL") != email:
             raise Fatal(f"ACLI_REST_WRITE_SITE/EMAIL in {env_file} do not match the acli identity; the target may have changed")
         thost, temail, label = host, email, f"PRODUCTION {host}"
     for key, want in (("ACLI_REST_WRITE_SITE", thost), ("ACLI_REST_WRITE_EMAIL", temail)):
         if env.get(key) != want:
-            raise Fatal(f"{key} in {env_file} does not name the target")
+            raise Fatal(f"{key} in {used} does not name the target")
     token_key = f"ACLI_REST_WRITE_{product.upper()}_TOKEN"
     if not env.get(token_key):
-        raise Fatal(f"{token_key} is missing in {env_file}")
+        raise Fatal(f"{token_key} is missing in {used}")
     cid = cloud_id(thost, opener)
     target = {"host": thost, "cloudId": cid, "email": temail}
     api_suffix = {"jira": "", "confluence": "/wiki/api/v2"}[product]
@@ -283,6 +288,7 @@ def _exit3(reason, result=None):
 
 
 def do_apply(opener, run, env_file, flags, pos):
+    _check_flags(flags, {"confirm", "env-file"}, "apply")
     if len(pos) != 1 or "confirm" not in flags:
         raise Fatal(USAGE)
     path, want = pathlib.Path(pos[0]), _one(flags, "confirm")
@@ -342,7 +348,7 @@ def do_apply(opener, run, env_file, flags, pos):
         result = result_text[:200]
     try:
         ok = op["readback"](get, args, base, data["body_text"], result)
-    except (Fatal, ValueError) as e:
+    except (Fatal, ValueError, TypeError, KeyError, AttributeError) as e:
         return _exit3(f"the read-back failed ({e})")
     if not ok:
         return _exit3("the read-back does not match what was sent", str(result)[:200])
@@ -369,6 +375,8 @@ def _names(rows):
 
 
 def _validate_issue_set(flags, pos=()):
+    if pos:
+        raise Fatal(f"issue-set takes no positional arguments: {pos[0]!r}")
     _check_flags(flags, {"key", *CHANGE_FLAGS}, "issue-set")
     for f in ("key", "parent", "priority", "environment-adf"):
         _one(flags, f)
@@ -465,6 +473,8 @@ def _readback_issue_set(get, args, base, body_text, result):
 # --- operation: version-create (Jira) ---------------------------------------
 
 def _validate_version_create(flags, pos=()):
+    if pos:
+        raise Fatal(f"version-create takes no positional arguments: {pos[0]!r}")
     _check_flags(flags, {"project", "name", "description"}, "version-create")
     for f in ("project", "name", "description"):
         _one(flags, f)
@@ -571,21 +581,21 @@ def _plan_page_fetch(get, args):
 
 
 def _validate_page_update(flags, pos):
-    # allowNodeLoss is this same validate's stored key: apply re-runs validate on the
-    # request file's args, where --allow-node-loss already became allowNodeLoss.
-    _check_flags(flags, {"base", "body-adf", "title", "allow-node-loss", "allowNodeLoss"}, "page-update")
+    if pos:
+        raise Fatal(f"page-update takes no positional arguments: {pos[0]!r}")
+    _check_flags(flags, {"base", "body-adf", "title", "allow-node-loss"}, "page-update")
     for f in ("base", "body-adf", "title"):
         _one(flags, f)
     if "base" not in flags:
         raise Fatal("usage: page-update --base <*.base.json> --body-adf <edited.adf.json> [--title T] [--allow-node-loss TYPE]")
     if "body-adf" not in flags:
         raise Fatal("--body-adf is required")
-    allow = flags.get("allow-node-loss") or flags.get("allowNodeLoss") or []
+    allow = flags.get("allow-node-loss") or []
     allow = [allow] if isinstance(allow, str) else list(allow)
     unknown = [a for a in allow if a not in PRESERVE_TYPES]
     if unknown:
         raise Fatal(f"--allow-node-loss must name node types it may lose, not {unknown}")
-    args = {"base": str(flags["base"]), "body-adf": str(flags["body-adf"]), "allowNodeLoss": allow}
+    args = {"base": str(flags["base"]), "body-adf": str(flags["body-adf"]), "allow-node-loss": allow}
     if "title" in flags:
         args["title"] = str(flags["title"])
     return args
@@ -608,7 +618,7 @@ def _plan_page_update(get, args):
     edited = _read_adf(args["body-adf"])
     live_counts, edited_counts = _node_counts(adf), _node_counts(edited)
     dropped = [t for t in PRESERVE_TYPES if live_counts.get(t, 0) > edited_counts.get(t, 0)
-               and t not in set(args["allowNodeLoss"])]
+               and t not in set(args.get("allow-node-loss") or [])]
     if dropped:
         raise Fatal(f"the edit removes these node types: {dropped}; "
                     f"pass --allow-node-loss <type> only for types you mean to drop")
@@ -632,7 +642,7 @@ def _readback_page_update(get, args, base, body_text, result):
 
 
 def _notes_page_update(args, flags):
-    allow = args.get("allowNodeLoss") or []
+    allow = args.get("allow-node-loss") or []
     notes = [f"publishing can discard or conflict with an unpublished draft of this page; check the "
              f"page for a draft first"]
     if allow:

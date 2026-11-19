@@ -8,8 +8,20 @@ Pre-`1.0.0`: breaking changes may land in any `0.x` release.
 This file starts at `0.1.18` — releases before that predate the changelog. See
 `git log` for the full history back to `0.1.0`.
 
-## [0.1.67] — 2026-11-19
-**Deep-audit fixes for `acli-rest-write.py` (the 0.1.58-0.1.66 run).** A read-back that fails after
+## [0.1.68] — 2026-11-19
+**Whole-picture audit fixes: the guard sees the REST scripts, and the alternate target works.**
+`acli-guard` (repo copy and the live dotfiles copy) now matches `acli-rest-write.py` — denied in
+subagents, asked on the main thread — and allows `acli-rest-get.py` (GET-only by construction);
+three new `corpus.tsv` rows and a main-thread row carry both scripts. `--env-file FILE` now
+actually reads FILE for the alternate target (its value was parsed but never used, so the
+documented test-site flow was unreachable); a read-back that answers a non-dict JSON body or
+`body: null` is exit 3 (it previously leaked an AttributeError traceback and exit 1 after the
+send); `apply` refuses unknown flags and every operation refuses stray positionals; the camelCase
+`--allowNodeLoss` synonym is gone — the stored key is now `allow-node-loss`, matching the flag;
+the docstring's guard sentence states the actual enforcement. 70 tests. First live writes remain
+blocked by site permissions (admin matter).
+
+## [0.1.67] — 2026-11-19**Deep-audit fixes for `acli-rest-write.py` (the 0.1.58-0.1.66 run).** A read-back that fails after
 the send (HTTP error, timeout, unreadable body) now exits 3 (sent but unverified) instead of leaking
 into exit 1, which invited re-running a write that had already fired; `--allow-node-loss` now
 survives plan→apply (apply's re-validation keeps the stored allowlist instead of dropping it and
