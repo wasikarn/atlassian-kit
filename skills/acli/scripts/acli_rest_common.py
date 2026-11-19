@@ -14,7 +14,7 @@ UUID_RE = re.compile(r"^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]
 API_HOST = "api.atlassian.com"
 TIMEOUT = 30
 ENV_FILE = pathlib.Path.home() / ".claude" / "atlassian.env"
-ALLOWED_METHODS = ("GET", "POST", "PUT")
+ALLOWED_METHODS = ("GET", "POST", "PUT", "DELETE")
 
 
 class Fatal(Exception):

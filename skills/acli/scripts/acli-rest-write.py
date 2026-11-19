@@ -26,7 +26,7 @@ be a different site than acli's, and the preview labels it ALTERNATE TARGET. The
 denies every subagent call of this script; approving a preview covers calls made through it and
 nothing else.
 Operations: Confluence page-create / page-fetch (read-only; writes the base+adf files) / page-update;
-Jira issue-set / version-create.
+Jira issue-set / version-create / version-edit / version-delete.
 """
 import datetime
 import hashlib
@@ -514,12 +514,120 @@ def _readback_version_create(get, args, base, body_text, result):
     return str(v.get("name")) == args["name"] and str(v.get("projectId")) == base["projectId"]
 
 
+def _readback_version_delete(get, args, base, body_text, result):
+    try:
+        get(f"/rest/api/3/version/{args['id']}", {})
+    except HttpError as e:
+        if e.code == 404:
+            return True
+        raise
+    return False
+
+
+def _validate_version_edit(flags, pos=()):
+    _check_flags(flags, {"id", "name", "description", "description-file", "archived", "released",
+                         "release-date"}, "version-edit")
+    if pos:
+        raise Fatal(f"version-edit takes no positional arguments: {pos[0]!r}")
+    if "id" not in flags:
+        raise Fatal("usage: version-edit --id <version id> [--name N] [--description D | --description-file "
+                    "FILE] [--released true|false] [--archived true|false] [--release-date YYYY-MM-DD]")
+    if len(flags) == 1:
+        raise Fatal("usage: version-edit needs one field besides --id")
+    args = {"id": str(flags["id"])}
+    if "name" in flags:
+        args["name"] = str(flags["name"])
+    if "description" in flags:
+        args["description"] = str(flags["description"])
+    if "description-file" in flags:
+        p = pathlib.Path(str(flags["description-file"]))
+        try:
+            args["description"] = p.read_text()
+        except OSError as e:
+            raise Fatal(f"cannot read --description-file {p}: {type(e).__name__}") from None
+    for boolean in ("released", "archived"):
+        if boolean in flags:
+            low = str(flags[boolean]).lower()
+            if low not in ("true", "false"):
+                raise Fatal(f"--{boolean} must be true or false, not {flags[boolean]!r}")
+            args[boolean] = low == "true"
+    if "release-date" in flags:
+        if not re.match(r"^\d{4}-\d{2}-\d{2}$", str(flags["release-date"])):
+            raise Fatal("--release-date must be YYYY-MM-DD")
+        args["releaseDate"] = str(flags["release-date"])
+    return args
+
+
+def _plan_version_edit(get, args):
+    if not PAGE_ID_RE.match(args["id"]):
+        raise Fatal("--id must be a numeric version id")
+    v = get(f"/rest/api/3/version/{args['id']}", {})
+    base = {k: v.get(k) for k in ("id", "name", "description", "archived", "released", "releaseDate")}
+    body = {k: args[k] for k in ("name", "description", "released", "archived", "releaseDate") if k in args}
+    return base, body
+
+
+def _send_version_edit(http, args, base, body_text):
+    return http("PUT", f"/rest/api/3/version/{args['id']}", body_text.encode())
+
+
+def _readback_version_edit(get, args, base, body_text, result):
+    v = get(f"/rest/api/3/version/{args['id']}", {})
+    sent = json.loads(body_text)
+    return all(v.get(k) == sent[k] for k in sent)
+
+
+def _validate_version_delete(flags, pos=()):
+    _check_flags(flags, {"id", "delete-fixed-issues", "delete-affected-issues", "move-fixed-to",
+                         "move-affected-to"}, "version-delete")
+    if pos:
+        raise Fatal(f"version-delete takes no positional arguments: {pos[0]!r}")
+    if "id" not in flags:
+        raise Fatal("usage: version-delete --id <version id> [--delete-fixed-issues true] "
+                    "[--delete-affected-issues true] [--move-fixed-to ID] [--move-affected-to ID]")
+    args = {"id": str(flags["id"])}
+    for toggle in ("delete-fixed-issues", "delete-affected-issues"):
+        if str(flags.get(toggle, "")).lower() == "true":
+            args[toggle] = True
+    for flag in ("move-fixed-to", "move-affected-to"):
+        if flag in flags:
+            if not PAGE_ID_RE.match(str(flags[flag])):
+                raise Fatal(f"--{flag} must be a numeric version id")
+            args[flag] = str(flags[flag])
+    return args
+
+
+def _plan_version_delete(get, args):
+    if not PAGE_ID_RE.match(args["id"]):
+        raise Fatal("--id must be a numeric version id")
+    v = get(f"/rest/api/3/version/{args['id']}", {})
+    base = {"id": str(v.get("id")), "name": v.get("name"), "projectId": v.get("projectId"),
+            "description": v.get("description")}
+    return base, {}
+
+
+_DELETE_QUERY = (("delete-fixed-issues", "deleteFixedIssues"), ("delete-affected-issues", "deleteAffectedIssues"),
+                 ("move-fixed-to", "moveFixedIssuesTo"), ("move-affected-to", "moveAffectedIssuesTo"))
+
+
+def _send_version_delete(http, args, base, body_text):
+    query = [(wire, "true" if args[cli] is True else args[cli]) for cli, wire in _DELETE_QUERY if cli in args]
+    qs = ("?" + urllib.parse.urlencode(query)) if query else ""
+    return http("DELETE", f"/rest/api/3/version/{args['id']}{qs}", None)
+
+
 OPERATIONS["issue-set"] = {"product": "jira", "validate": _validate_issue_set,
                            "plan": _plan_issue_set, "send": _send_issue_set,
                            "readback": _readback_issue_set}
 OPERATIONS["version-create"] = {"product": "jira", "validate": _validate_version_create,
                                 "plan": _plan_version_create, "send": _send_version_create,
                                 "readback": _readback_version_create}
+OPERATIONS["version-edit"] = {"product": "jira", "validate": _validate_version_edit,
+                              "plan": _plan_version_edit, "send": _send_version_edit,
+                              "readback": _readback_version_edit}
+OPERATIONS["version-delete"] = {"product": "jira", "validate": _validate_version_delete,
+                                "plan": _plan_version_delete, "send": _send_version_delete,
+                                "readback": _readback_version_delete}
 
 
 

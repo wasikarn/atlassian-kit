@@ -383,7 +383,8 @@ def test_tokens_never_reach_stdout_or_stderr_on_error_paths():
 
 
 def test_registered_operations_match_the_plan_phases_so_far():
-    assert sorted(rw.OPERATIONS) == ["issue-set", "page-create", "page-fetch", "page-update", "version-create"], sorted(rw.OPERATIONS)
+    assert sorted(rw.OPERATIONS) == ["issue-set", "page-create", "page-fetch", "page-update", "version-create",
+                                     "version-delete", "version-edit"], sorted(rw.OPERATIONS)
     for name, op in rw.OPERATIONS.items():
         expected = {"product", "validate", "plan", "send", "readback"} if name != "page-fetch" else {"planOnly", "product", "validate", "plan"}
         assert set(op) >= expected, (name, sorted(op))
@@ -1084,6 +1085,91 @@ def test_allow_node_loss_rejects_the_camel_case_synonym():
         assert op.calls == []
     finally:
         os.chdir(old2)
+
+
+# --- version-edit / version-delete (0.1.70): the raw Jira version lifecycle ----
+
+def _version_routes(state):
+    def route(req):
+        u, m = urllib.parse.urlsplit(req.full_url).path, req.get_method()
+        if m == "PUT" and u.endswith("/rest/api/3/version/18329"):
+            state["v"] = dict(state["v"], **json.loads(req.data.decode()))
+            return json.dumps(state["v"])
+        if m == "DELETE" and u.endswith("/rest/api/3/version/18329"):
+            state["deleted"] = req.full_url
+            return ""
+        if m == "GET" and u.endswith("/rest/api/3/version/18329"):
+            if state.get("deleted"):
+                return urllib.error.HTTPError(req.full_url, 404, "nf", http.client.HTTPMessage(),
+                                              io.BytesIO(b'{"errorMessages":["Could not find version"]}'))
+            return json.dumps(state["v"])
+        raise AssertionError(f"unexpected {m} {u}")
+    return [(JIRA, route)]
+
+
+def test_version_edit_refuses_unknown_flags_and_zero_changes():
+    code, _, err, op = run(["plan", "version-edit", "--id", "18329"], jira_routes() + [tenant_route()])
+    assert code == 1 and "usage" in err and op.calls == []
+    code, _, err, op = run(["plan", "version-edit", "--id", "18329", "--named", "x"], jira_routes() + [tenant_route()])
+    assert code == 1 and "unknown flag" in err and op.calls == []
+    code, _, err, op = run(["plan", "version-edit", "--id", "18329", "--released", "TRUE!"], jira_routes() + [tenant_route()])
+    assert code == 1 and "true or false" in err and op.calls == []
+
+
+def test_version_edit_applies_and_read_backs():
+    state = {"v": {"id": "18329", "name": "1.0", "description": "old", "projectId": "17951",
+                   "archived": False, "released": False}}
+    code, out, err, op = run(["plan", "version-edit", "--id", "18329", "--description", "live edit"],
+                             _version_routes(state) + [tenant_route()])
+    assert code == 0, err
+    path, conf = request_path(out), confirm_of(out)
+    code, out2, err2, op2 = run(["apply", str(path), "--confirm", conf],
+                                _version_routes(state) + [tenant_route()])
+    assert code == 0, err2
+    assert state["v"]["description"] == "live edit"
+    assert not path.exists()
+
+
+def test_version_edit_accepts_a_description_file_and_boolean_flags():
+    state = {"v": {"id": "18329", "name": "1.0", "description": "", "projectId": "17951",
+                   "archived": False, "released": False}}
+    adf_path = adf_file()
+    adf_path.write_text("desc from file")
+    code, out, err, op = run(["plan", "version-edit", "--id", "18329", "--description-file", str(adf_path),
+                              "--archived", "true"],
+                             _version_routes(state) + [tenant_route()])
+    assert code == 0, err
+    data = json.loads(request_path(out).read_text())
+    wire = json.loads(data["body_text"])
+    assert wire == {"description": "desc from file", "archived": True}
+
+
+def test_version_delete_applies_and_verifies_by_a_404_readback():
+    state = {"v": {"id": "18329", "name": "1.0", "projectId": "17951"}}
+    code, out, err, op = run(["plan", "version-delete", "--id", "18329"],
+                             _version_routes(state) + [tenant_route()])
+    assert code == 0, err
+    path, conf = request_path(out), confirm_of(out)
+    code, out2, err2, op2 = run(["apply", str(path), "--confirm", conf],
+                                _version_routes(state) + [tenant_route()])
+    assert code == 0, err2
+    assert state.get("deleted")
+    assert not path.exists()
+
+
+def test_version_delete_passes_the_escalation_toggles_as_query_params():
+    state = {"v": {"id": "18329", "name": "1.0", "projectId": "17951"}}
+    code, out, err, op = run(["plan", "version-delete", "--id", "18329", "--delete-fixed-issues", "true",
+                              "--move-affected-to", "18400"],
+                             _version_routes(state) + [tenant_route()])
+    assert code == 0, err
+    path, conf = request_path(out), confirm_of(out)
+    code, out2, err2, op2 = run(["apply", str(path), "--confirm", conf],
+                                _version_routes(state) + [tenant_route()])
+    assert code == 0, err2
+    import urllib.parse as up
+    q = up.parse_qs(up.urlsplit(state["deleted"]).query)
+    assert q == {"deleteFixedIssues": ["true"], "moveAffectedIssuesTo": ["18400"]}
 
 
 if __name__ == "__main__":

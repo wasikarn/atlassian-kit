@@ -8,13 +8,28 @@ Pre-`1.0.0`: breaking changes may land in any `0.x` release.
 This file starts at `0.1.18` — releases before that predate the changelog. See
 `git log` for the full history back to `0.1.0`.
 
+## [0.1.70] — 2026-11-19
+**`version-edit` and `version-delete` operations; api-read hardening.** The raw Jira version
+lifecycle landed in `acli-rest-write.py`: `version-edit --id <id>` (PUT /version/{id}; `--name`,
+`--description`/`--description-file`, `--released|--archived true|false`, `--release-date`, at least
+one field besides `--id`) and `version-delete --id <id>` (DELETE, verified by a 404 read-back;
+`--delete-fixed-issues|--delete-affected-issues true` and `--move-fixed-to|--move-affected-to ID`
+as query escapes). `acli_rest_common` now allows DELETE for the write script only — the read
+script's METHOD constant stays the single GET path. `api <product> <PATH>` hardening from review:
+dot-segments are refused (no traversal inside the prefix), commas and percent-escapes are allowed
+in paths, the dead `want`/`_product` scaffolding is gone, and the read script builds its sessions
+through one `read_session`/`product_token` pair. The env-file contract is now stated for both
+tokens (read trio + the Confluence write trio that `api confluence` uses) in SKILL.md and the
+docstring. 51 read tests (9 new), 75 write tests (5 new).
+
 ## [0.1.69] — 2026-11-19
 **`acli-rest-get.py api <jira|confluence> <PATH>` — raw GET-only reads for ad-hoc endpoints.**
 jira takes `/rest/api/3/*` paths with the read token, confluence takes `/wiki/api/v2/*` paths with
 the scoped Confluence token; each product's SITE/EMAIL env keys still must match acli's identity,
 paths outside the two prefixes are refused, and the method stays the GET-only constant. Replaces
-the inline REST probes of the live-verification runs. 49 tests in the read suite (7 new), 70 in the
-write suite.
+the read-sides of the inline REST probes (the version PUT/DELETE probes became the version-edit
+and version-delete operations in 0.1.70). 49 tests in the read suite (7 new), 70 in the
+write suite when this shipped.
 
 ## [0.1.68] — 2026-11-19
 **Whole-picture audit fixes: the guard sees the REST scripts, and the alternate target works.**

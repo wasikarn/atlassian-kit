@@ -128,10 +128,15 @@ def test_token_never_reaches_stdout_or_stderr():
 
 
 def test_credential_is_refused_for_any_host_but_api_atlassian_com():
+    import importlib.util
+    from pathlib import Path as _Path
+    spec = importlib.util.spec_from_file_location("common", _Path(__file__).parent / "acli_rest_common.py")
+    common = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(common)
     op = FakeOpener([])
     try:
-        rg.http_get(op, "https://evil.example.com/x", (EMAIL, TOKEN))
-    except rg.Fatal as e:
+        common.http_request(op, rg.METHOD, "https://evil.example.com/x", (EMAIL, TOKEN))
+    except common.Fatal as e:
         assert "refusing" in str(e)
     else:
         raise AssertionError("credential was allowed to a foreign host")
@@ -396,11 +401,33 @@ def test_source_sends_only_get_and_never_a_request_body():
     here = Path(__file__).parent
     src = (here / "acli-rest-get.py").read_text()
     common = (here / "acli_rest_common.py").read_text()
-    assert "http_get(" in src and "http_request(" not in src, "the read script uses only the GET helper"
-    assert common.count("urllib.request.Request(") == 1, "one place in the shared module builds a request"
+    assert "http_request(opener, METHOD" in src, "the GET-only constant must be load-bearing"
     assert rg.METHOD == "GET"
+    assert common.count("urllib.request.Request(") == 1, "one place in the shared module builds a request"
     for word in ("data=", '"POST"', '"PUT"', '"DELETE"', '"PATCH"', "urlopen("):
         assert word not in src, word
+
+
+def test_api_refuses_dot_traversal_even_inside_the_prefix():
+    for path in ("/rest/api/3/../admin", "/rest/api/3/./x", "/wiki/api/v2/../page/1", "/rest/api/3/x..y"):
+        code, _, err, op = run_main(["api", "jira", path], [])
+        assert code == 1 and "not an api path" in err, (path, err)
+        assert op.calls == [], path
+
+
+def test_api_accepts_comma_and_percent_params():
+    env = ENV_OK + f"ACLI_REST_WRITE_SITE={HOST}\nACLI_REST_WRITE_EMAIL={EMAIL}\nACLI_REST_WRITE_CONFLUENCE_TOKEN=conf-tok\n"
+    cases = [  # (product, path, expected URL)
+        ("confluence", "/wiki/api/v2/spaces?ids=1,2",
+         f"https://api.atlassian.com/ex/confluence/{CID}/wiki/api/v2/spaces?ids=1,2"),
+        ("jira", "/rest/api/3/search?query=%E0%B8%AA", f"{JIRA}/rest/api/3/search?query=%E0%B8%AA"),
+    ]
+    for product, path, url in cases:
+        code, out, err, op = run_main(["api", product, path], standard_routes([(url, lambda r: json.dumps({"ok": True}))]),
+                                      env=env)
+        assert code == 0, (path, err)
+        assert any(r.full_url.startswith(url) for r in op.calls), path
+        assert all(r.get_method() == "GET" for r in op.calls)
 
 
 def test_issue_type_id_that_is_not_digits_is_rejected_before_any_request():
