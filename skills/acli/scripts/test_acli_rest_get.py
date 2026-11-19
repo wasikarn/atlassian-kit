@@ -393,9 +393,12 @@ def test_token_is_never_passed_in_any_subprocess_argv():
 
 
 def test_source_sends_only_get_and_never_a_request_body():
-    src = (Path(__file__).parent / "acli-rest-get.py").read_text()
-    assert src.count("urllib.request.Request(") == 1, "one place builds a request"
-    assert "method=METHOD" in src and rg.METHOD == "GET"
+    here = Path(__file__).parent
+    src = (here / "acli-rest-get.py").read_text()
+    common = (here / "acli_rest_common.py").read_text()
+    assert "http_get(" in src and "http_request(" not in src, "the read script uses only the GET helper"
+    assert common.count("urllib.request.Request(") == 1, "one place in the shared module builds a request"
+    assert rg.METHOD == "GET"
     for word in ("data=", '"POST"', '"PUT"', '"DELETE"', '"PATCH"', "urlopen("):
         assert word not in src, word
 

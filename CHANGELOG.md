@@ -8,6 +8,17 @@ Pre-`1.0.0`: breaking changes may land in any `0.x` release.
 This file starts at `0.1.18` — releases before that predate the changelog. See
 `git log` for the full history back to `0.1.0`.
 
+## [0.1.62] — 2026-11-19
+**Write-script skeleton (plan/apply), no operation registered.** New `acli-rest-write.py` and
+`acli_rest_common.py` (shared with `acli-rest-get.py`, whose behaviour and 42 tests are unchanged). The
+write script registers no operation yet; its two commands are exercised by a test-only operation:
+`plan` validates arguments, resolves the target, and writes a request file holding operation, args, base
+state and body text but not method, path or URL (apply picks those from code, rebuilds the request from
+the live state, and refuses on any mismatch); `apply` enforces a confirm hash over the file bytes, a
+strict schema, a 30-minute age limit, and exits 0/1/2/3 for verified / refused / rejected by the server
+/ sent-but-unverified. 26 tests, fake opener, no network. Tokens: distinct ACLI_REST_WRITE_* keys,
+`--env-file` names an alternate target whose site must differ from acli's and is labelled ALTTERNATE...
+
 ## [0.1.61] — 2026-11-19
 **`acli-rest-get.py` reads its token from an env file, not the Keychain.** The operator's
 `secret-read-guard` hook blocks direct reads of `*.env` files, while nothing guarded

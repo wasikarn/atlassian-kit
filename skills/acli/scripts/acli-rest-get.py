@@ -20,111 +20,30 @@ caller without permission also gets an empty list).
 
 Checked against a live site on 2026-11-19 with a scoped token (read:jira-work, read:jira-user).
 """
-import base64
 import json
 import pathlib
 import re
-import subprocess
 import sys
-import urllib.error
 import urllib.parse
-import urllib.request
 
-HOST_RE = re.compile(r"^[a-z0-9-]+\.atlassian\.net$")
-UUID_RE = re.compile(r"^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$")
+sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent))
+from acli_rest_common import (  # noqa: E402  (shared with acli-rest-write.py)
+    API_HOST, ENV_FILE, Fatal, acli_identity, cloud_id, default_opener, http_get,
+    parse_json, read_env_file, run_command,
+)
+
 ISSUE_RE = re.compile(r"^[A-Z][A-Z0-9_]+-[0-9]+$")
 PROJECT_RE = re.compile(r"^[A-Z][A-Z0-9_]+$")
 ISSUETYPE_RE = re.compile(r"^[0-9]+$")
-API_HOST = "api.atlassian.com"
 METHOD = "GET"  # the only method this script may send
-TIMEOUT = 30
-ENV_FILE = pathlib.Path.home() / ".claude" / "atlassian.env"
 FIND_USER_MAX = 50
 USAGE = ("usage: acli-rest-get.py transitions ISSUE-KEY | find-user QUERY | "
          "createmeta PROJECT-KEY [ISSUETYPE-ID]")
 
 
-class Fatal(Exception):
-    pass
-
-
-class _NoRedirect(urllib.request.HTTPRedirectHandler):
-    def redirect_request(self, req, fp, code, msg, headers, newurl):
-        return None  # a 3xx then raises HTTPError: never follow it with the credential attached
-
-
-def default_opener():
-    return urllib.request.build_opener(_NoRedirect)
-
-
-def run_command(cmd, spawn=subprocess.run):
-    try:
-        return spawn(cmd, capture_output=True, text=True)
-    except FileNotFoundError:
-        raise Fatal(f"`{cmd[0]}` not found on PATH") from None
-
-
-def parse_json(text, source):
-    try:
-        return json.loads(text)
-    except ValueError:
-        raise Fatal(f"response from {source} is not JSON") from None
-
-
-def acli_identity(run):
-    r = run(["acli", "jira", "auth", "status"])
-    if r.returncode != 0:
-        raise Fatal("acli jira auth status failed; run `acli jira auth login` first")
-    sites = re.findall(r"^\s*Site:\s*(\S+)\s*$", r.stdout, re.M)
-    emails = re.findall(r"^\s*Email:\s*(\S+)\s*$", r.stdout, re.M)
-    if len(sites) != 1 or len(emails) != 1:
-        raise Fatal("acli jira auth status: expected exactly one Site and one Email")
-    host = re.sub(r"^https?://", "", sites[0]).rstrip("/")
-    if not HOST_RE.match(host):
-        raise Fatal(f"site {host!r} is not a *.atlassian.net host")
-    if "@" not in emails[0]:
-        raise Fatal("acli jira auth status: Email is not an email address")
-    return host, emails[0]
-
-
-def http_get(opener, url, auth=None):
-    """GET url and return the body text. auth=(email, token) is sent only to api.atlassian.com."""
-    netloc = urllib.parse.urlsplit(url).netloc
-    headers = {"Accept": "application/json"}
-    if auth is not None:
-        if netloc != API_HOST:
-            raise Fatal(f"refusing to send the credential to {netloc}")
-        raw = f"{auth[0]}:{auth[1]}".encode()
-        headers["Authorization"] = "Basic " + base64.b64encode(raw).decode()
-    req = urllib.request.Request(url, headers=headers, method=METHOD)
-    try:
-        with opener.open(req, timeout=TIMEOUT) as resp:
-            return resp.read().decode()
-    except urllib.error.HTTPError as e:
-        detail = e.read(500).decode(errors="replace")
-        raise Fatal(f"HTTP {e.code} from {netloc}: {detail}") from None
-    except (urllib.error.URLError, TimeoutError, OSError) as e:
-        raise Fatal(f"request to {netloc} failed: {type(e).__name__}") from None
-
-
-def cloud_id(host, opener):
-    info = parse_json(http_get(opener, f"https://{host}/_edge/tenant_info"), host)
-    cid = info.get("cloudId", "") if isinstance(info, dict) else ""
-    if not isinstance(cid, str) or not UUID_RE.match(cid):
-        raise Fatal("cloudId lookup did not return a UUID")
-    return cid
-
-
 def env_token(host, email, env_file):
-    """Return the token from env_file, only if the file is private and written for this site and email."""
-    try:
-        if env_file.stat().st_mode & 0o077:
-            raise Fatal(f"{env_file} is readable by group or others; run: chmod 600 {env_file}")
-        text = env_file.read_text()
-    except FileNotFoundError:
-        raise Fatal(f"token file {env_file} not found (see the script docstring)") from None
-    pairs = re.findall(r"^\s*(?:export\s+)?(ACLI_REST_READ_[A-Z]+)=(.*?)\s*$", text, re.M)
-    values = {k: v[1:-1] if len(v) > 1 and v[0] == v[-1] and v[0] in "\"'" else v for k, v in pairs}
+    """Return the read token from env_file, only if the file is written for this site and email."""
+    values = read_env_file(env_file)
     for key, want in (("ACLI_REST_READ_SITE", host), ("ACLI_REST_READ_EMAIL", email)):
         if values.get(key) != want:
             raise Fatal(f"{key} in {env_file} does not match `acli jira auth status`")
