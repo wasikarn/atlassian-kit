@@ -17,7 +17,7 @@ state and body text but not method, path or URL (apply picks those from code, re
 the live state, and refuses on any mismatch); `apply` enforces a confirm hash over the file bytes, a
 strict schema, a 30-minute age limit, and exits 0/1/2/3 for verified / refused / rejected by the server
 / sent-but-unverified. 26 tests, fake opener, no network. Tokens: distinct ACLI_REST_WRITE_* keys,
-`--env-file` names an alternate target whose site must differ from acli's and is labelled ALTTERNATE...
+`--env-file` names an alternate target whose site must differ from acli's and is labelled ALTERNATE TARGET. No docs name the write script yet; the acli-guard change for it is still pending the operator's OK.g the operator's OK.
 
 ## [0.1.61] — 2026-11-19
 **`acli-rest-get.py` reads its token from an env file, not the Keychain.** The operator's
