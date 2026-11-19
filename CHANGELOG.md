@@ -8,6 +8,17 @@ Pre-`1.0.0`: breaking changes may land in any `0.x` release.
 This file starts at `0.1.18` — releases before that predate the changelog. See
 `git log` for the full history back to `0.1.0`.
 
+## [0.1.59] — 2026-11-19
+**Review fixes for `acli-rest-get.py`.** A two-axis review of 0.1.58 found gaps. The optional issue
+type id of `createmeta` went into the URL path unchecked; it must now be digits. A response that is
+not JSON, or a missing `acli` or `security` binary, printed a traceback; each is now a `FATAL`. Arguments
+are validated before any acli call, Keychain read or request, so a usage error does no work. The request
+method is one constant, `METHOD`. New tests pin the Keychain argv (service and account), 401 and 403,
+the token staying out of output on an error path and out of every argv, the redirect handler refusing
+every 3xx, and the source holding no other method or request body: 36 tests, up from 24. The docstring
+states both `find-user` limits. `CLAUDE.md` lists the script and no longer carries the dated MCP status
+line. Still not run against a live site.
+
 ## [0.1.58] — 2026-11-19
 **Read-only REST script, and docs that say the MCP may be absent.** New
 `skills/acli/scripts/acli-rest-get.py` covers three lookups acli cannot do: `transitions`, `find-user`

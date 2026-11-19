@@ -37,7 +37,9 @@ python3 skills/acli/scripts/md2adf.py somefile.md | python3 skills/acli/scripts/
   `skills/acli/ISSUES.md` Issue 1), `adf2md.py` (inverse; takes an ADF doc, a view payload as a
   dict or a list of them, or a create payload; owns `read_json`), `acli-edit.py` (section-level
   read-modify-write, since `acli edit --description` replaces the body), `acli-ls.py`
-  (normalized search table, unwraps every search shape acli has emitted).
+  (normalized search table, unwraps every search shape acli has emitted), `acli-rest-get.py`
+  (GET-only Jira REST lookups acli lacks: transitions, find-user, createmeta; token from the
+  macOS Keychain; not yet run against a live site).
   Wrappers: `acli-new.sh` (create from Markdown), `acli-set-desc.sh` (replace the whole
   description), `acli-edit.sh` (runs `acli-edit.py`), `acli-assign.sh` (assign by accountId via
   `edit --from-json`), `acli-ls.sh` (runs `acli-ls.py`). The four write wrappers source
@@ -55,7 +57,7 @@ python3 skills/acli/scripts/md2adf.py somefile.md | python3 skills/acli/scripts/
 - **Preview before mutate:** bulk ops preview via the same `--jql`; creates render the payload with
   `adf2md.py` first. Replicate in any new writing script.
 - **acli first, Atlassian MCP only for the gaps listed in `skills/acli/SKILL.md` § "When acli
-  can't"** (page create/update are MCP-only). Status 2026-11-19: no Atlassian MCP tools are available in this environment. Update that list before using MCP elsewhere.
+  can't"** (page create/update are MCP-only). Update that list before using MCP elsewhere.
 - **Cross-skill coupling:** `jira-content` wraps `acli` scripts via `../../..` climbs; an ADF or
   script-interface change in `acli` must be checked there. New wrappers resolve their dir with
   `BASH_SOURCE[0]`, not `dirname "$0"`.

@@ -8,6 +8,7 @@ import json
 import sys
 import urllib.error
 import urllib.parse
+import urllib.request
 from contextlib import redirect_stderr, redirect_stdout
 from pathlib import Path
 from types import SimpleNamespace
@@ -73,9 +74,15 @@ def keychain_missing(*_):
 
 def run_main(argv, routes, keychain=keychain_ok, acli=lambda: ACLI_OK):
     op = FakeOpener(routes)
+    op.argvs = []
+
+    def run(cmd):
+        op.argvs.append(cmd)
+        return acli() if cmd[0] == "acli" else keychain()
+
     out, err = io.StringIO(), io.StringIO()
     with redirect_stdout(out), redirect_stderr(err):
-        code = rg.main(["acli-rest-get.py", *argv], opener=op, run_acli=acli, run_keychain=keychain)
+        code = rg.main(["acli-rest-get.py", *argv], opener=op, run=run)
     return code, out.getvalue(), err.getvalue(), op
 
 
@@ -117,7 +124,7 @@ def test_token_never_reaches_stdout_or_stderr():
 def test_credential_is_refused_for_any_host_but_api_atlassian_com():
     op = FakeOpener([])
     try:
-        rg.call(op, "https://evil.example.com/x", (EMAIL, TOKEN))
+        rg.http_get(op, "https://evil.example.com/x", (EMAIL, TOKEN))
     except rg.Fatal as e:
         assert "refusing" in str(e)
     else:
@@ -125,9 +132,12 @@ def test_credential_is_refused_for_any_host_but_api_atlassian_com():
     assert op.calls == [], "no request may be made"
 
 
-def test_default_opener_does_not_follow_redirects():
-    op = rg.default_opener()
-    assert any(isinstance(h, rg._NoRedirect) for h in op.handlers), "redirect handler missing"
+def test_default_opener_refuses_to_build_a_follow_up_request_for_a_3xx():
+    handlers = [h for h in rg.default_opener().handlers if isinstance(h, urllib.request.HTTPRedirectHandler)]
+    assert len(handlers) == 1, "exactly one redirect handler, ours"
+    req = urllib.request.Request("https://api.atlassian.com/x")
+    for status in (301, 302, 303, 307, 308):
+        assert handlers[0].redirect_request(req, None, status, "", {}, "https://evil.example.com/") is None
 
 
 def test_a_redirect_is_fatal_not_followed():
@@ -177,7 +187,9 @@ def test_no_site_override_flag_exists():
     code, _, err, op = run_main(["find-user", "x", "--site", "other.atlassian.net"], standard_routes(
         [(f"{JIRA}/rest/api/3/user/search", lambda r: json.dumps([{"accountId": "a1"}]))]))
     assert code == 1 and "usage" in err
-    assert not any("other.atlassian.net" in r.full_url for r in op.calls)
+    assert op.calls == [] and op.argvs == []
+    src = (Path(__file__).parent / "acli-rest-get.py").read_text()
+    assert "argparse" not in src and '"--' not in src, "the script must take no flags"
 
 
 # --- find-user: best effort, says so -----------------------------------------
@@ -291,6 +303,96 @@ def test_timeout_is_fatal():
     code, _, err, _ = run_main(["find-user", "x"], standard_routes(
         [(f"{JIRA}/rest/api/3/user/search", lambda r: TimeoutError("slow"))]))
     assert code == 1 and "failed" in err
+
+
+# --- review fixes (0.1.59) ---------------------------------------------------
+
+def _http_error(status, body=b""):
+    return lambda r: urllib.error.HTTPError(r.full_url, status, "x", http.client.HTTPMessage(), io.BytesIO(body))
+
+
+def test_unauthorized_and_forbidden_are_fatal_with_their_status():
+    for status in (401, 403):
+        code, out, err, _ = run_main(["find-user", "x"], standard_routes(
+            [(f"{JIRA}/rest/api/3/user/search", _http_error(status))]))
+        assert code == 1 and f"HTTP {status}" in err and out == "", (status, err)
+
+
+def test_token_never_reaches_output_on_an_error_path():
+    code, out, err, _ = run_main(["find-user", "x"], standard_routes(
+        [(f"{JIRA}/rest/api/3/user/search", _http_error(401, b"bad credentials"))]))
+    assert code == 1
+    assert TOKEN not in out and TOKEN not in err
+
+
+def test_keychain_is_asked_for_the_site_service_and_the_email_account():
+    _, _, _, op = run_main(["find-user", "x"], standard_routes(
+        [(f"{JIRA}/rest/api/3/user/search", lambda r: "[]")]))
+    sec = [a for a in op.argvs if a[0] == "security"]
+    assert sec == [["security", "find-generic-password", "-s", f"acli-rest-read:{HOST}", "-a", EMAIL, "-w"]], sec
+
+
+def test_token_is_never_passed_in_any_subprocess_argv():
+    _, _, _, op = run_main(["find-user", "x"], standard_routes(
+        [(f"{JIRA}/rest/api/3/user/search", lambda r: "[]")]))
+    assert not any(TOKEN in part for argv in op.argvs for part in argv)
+
+
+def test_source_sends_only_get_and_never_a_request_body():
+    src = (Path(__file__).parent / "acli-rest-get.py").read_text()
+    assert src.count("urllib.request.Request(") == 1, "one place builds a request"
+    assert "method=METHOD" in src and rg.METHOD == "GET"
+    for word in ("data=", '"POST"', '"PUT"', '"DELETE"', '"PATCH"', "urlopen("):
+        assert word not in src, word
+
+
+def test_issue_type_id_that_is_not_digits_is_rejected_before_any_request():
+    for bad in ("../../x?y", "10004/..", "abc", ""):
+        code, _, err, op = run_main(["createmeta", "DEMO", bad], standard_routes())
+        assert code == 1 and "not an issue type id" in err, (bad, err)
+        assert op.calls == [], bad
+
+
+def test_bad_arguments_do_no_acli_keychain_or_network_work():
+    for argv in (["set-parent", "DEMO-1"], ["transitions"], ["transitions", "bad key"], ["createmeta", "demo"]):
+        code, _, err, op = run_main(argv, standard_routes())
+        assert code == 1 and "FATAL" in err, argv
+        assert op.calls == [] and op.argvs == [], argv
+
+
+def test_non_json_success_body_is_fatal_without_a_traceback():
+    code, out, err, _ = run_main(["find-user", "x"], standard_routes(
+        [(f"{JIRA}/rest/api/3/user/search", lambda r: "<html>login</html>")]))
+    assert code == 1 and "FATAL" in err and "not JSON" in err and out == ""
+
+
+def test_non_json_tenant_info_is_fatal():
+    code, _, err, _ = run_main(["find-user", "x"], [(f"https://{HOST}/_edge/tenant_info", lambda r: "nope")])
+    assert code == 1 and "not JSON" in err
+
+
+def test_missing_acli_binary_is_fatal_without_a_traceback():
+    def boom(cmd, **_):
+        raise FileNotFoundError(cmd[0])
+
+    op = FakeOpener([])
+    err = io.StringIO()
+    with redirect_stdout(io.StringIO()), redirect_stderr(err):
+        code = rg.main(["acli-rest-get.py", "find-user", "x"], opener=op, run=lambda cmd: rg.run_command(cmd, spawn=boom))
+    assert code == 1 and "FATAL" in err.getvalue() and "not found" in err.getvalue()
+
+
+def test_transition_without_a_target_status_reports_null():
+    tr = {"transitions": [{"id": "5", "name": "Comment", "to": None}]}
+    code, out, err, _ = run_main(["transitions", "DEMO-7"], standard_routes(
+        [(f"{JIRA}/rest/api/3/issue/DEMO-7/transitions", lambda r: json.dumps(tr))]))
+    assert code == 0, err
+    assert json.loads(out) == [{"id": "5", "name": "Comment", "to": None}]
+
+
+def test_docstring_states_both_find_user_limits():
+    doc = rg.__doc__
+    assert "1,000" in doc and "empty" in doc and "50" in doc
 
 
 if __name__ == "__main__":
