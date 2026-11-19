@@ -38,7 +38,8 @@ python3 skills/acli/scripts/md2adf.py somefile.md | python3 skills/acli/scripts/
   dict or a list of them, or a create payload; owns `read_json`), `acli-edit.py` (section-level
   read-modify-write, since `acli edit --description` replaces the body), `acli-ls.py`
   (normalized search table, unwraps every search shape acli has emitted), `acli-rest-get.py`
-  (GET-only Jira REST lookups acli lacks: transitions, find-user, createmeta; token from the
+  (GET-only Jira REST lookups acli lacks: transitions, find-user, createmeta, plus a raw
+  `api <jira|confluence> <PATH>` read with each product's token; token from the
   mode-600 `~/.claude/atlassian.env`), `acli-rest-write.py` (plan/apply writes; registers
   Confluence `page-create`/`page-fetch`/`page-update` (base-file + hash flow,
   node-loss gate) and Jira `issue-set`/`version-create`; write tokens from the same file).

@@ -4,6 +4,7 @@
   acli-rest-get.py transitions ISSUE-KEY
   acli-rest-get.py find-user QUERY
   acli-rest-get.py createmeta PROJECT-KEY [ISSUETYPE-ID]
+  acli-rest-get.py api <jira|confluence> <PATH>   (raw GET-only read; jira /rest/api/3/*, confluence /wiki/api/v2/*)
 
 Identity: site and email come from `acli jira auth status` only. The token is read from
 ~/.claude/atlassian.env, which must be mode 600 and hold three lines written for that identity:
@@ -38,7 +39,43 @@ ISSUETYPE_RE = re.compile(r"^[0-9]+$")
 METHOD = "GET"  # the only method this script may send
 FIND_USER_MAX = 50
 USAGE = ("usage: acli-rest-get.py transitions ISSUE-KEY | find-user QUERY | "
-         "createmeta PROJECT-KEY [ISSUETYPE-ID]")
+         "createmeta PROJECT-KEY [ISSUETYPE-ID] | api <jira|confluence> <PATH>")
+API_PATH_RE = re.compile(r"^/(rest/api/3/|wiki/api/v2/)[A-Za-z0-9_?&=./-]*$")
+
+
+def env_token_for(host, email, env_file, product):
+    """Token for an api read: the read token for jira, the scoped Confluence token for confluence."""
+    values = read_env_file(env_file)
+    if product == "jira":
+        keys, token_key, want = (("ACLI_REST_READ_SITE", host), ("ACLI_REST_READ_EMAIL", email)), "ACLI_REST_READ_TOKEN", None
+    else:
+        keys, token_key, want = (("ACLI_REST_WRITE_SITE", host), ("ACLI_REST_WRITE_EMAIL", email)), "ACLI_REST_WRITE_CONFLUENCE_TOKEN", None
+    for key, w in keys:
+        if values.get(key) != w:
+            raise Fatal(f"{key} in {env_file} does not match `acli jira auth status`")
+    if not values.get(token_key):
+        raise Fatal(f"{token_key} is missing in {env_file}")
+    return values[token_key], base_url_for(product)
+
+
+def base_url_for(product):
+    # the api-version prefix rides inside PATH (path starts /rest/api/3/ or /wiki/api/v2/)
+    return f"https://{API_HOST}/ex/{product}"
+
+
+def api_session(opener, run, env_file, product):
+    host, email = acli_identity(run)
+    token, base = env_token_for(host, email, env_file, product)
+    cid = cloud_id(host, opener)
+    print(f"target: {host} ({cid}) as {email}", file=sys.stderr)
+    def raw_get(path, params=None):
+        url = base + f"/{cid}" + path + ("?" + urllib.parse.urlencode(params) if params else "")
+        return parse_json(http_get(opener, url, (email, token)), API_HOST)
+    return raw_get
+
+
+def api_read(get, _product, path):
+    return get(path)
 
 
 def env_token(host, email, env_file):
@@ -121,13 +158,24 @@ def parse_args(args):
         if len(rest) == 2 and not ISSUETYPE_RE.match(rest[1]):
             raise Fatal(f"not an issue type id (digits only): {rest[1]!r}")
         return createmeta, rest
+    if cmd == "api" and len(rest) == 2:
+        if rest[0] not in ("jira", "confluence"):
+            raise Fatal(f"product must be jira or confluence, not {rest[0]!r}")
+        if not API_PATH_RE.match(rest[1]) or (rest[0] == "jira" and not rest[1].startswith("/rest/api/3/")) \
+                or (rest[0] == "confluence" and not rest[1].startswith("/wiki/api/v2/")):
+            raise Fatal(f"path must start with /rest/api/3/ (jira) or /wiki/api/v2/ (confluence): {rest[1]!r}")
+        return api_read, rest
     raise Fatal(USAGE)
 
 
 def main(argv, opener=None, run=run_command, env_file=ENV_FILE):
     try:
         lookup, args = parse_args(argv[1:])
-        result = lookup(jira_session(opener or default_opener(), run, env_file), *args)
+        if lookup is api_read:
+            session = api_session(opener or default_opener(), run, env_file, args[0])
+        else:
+            session = jira_session(opener or default_opener(), run, env_file)
+        result = lookup(session, *args)
     except Fatal as e:
         print(f"FATAL: {e}", file=sys.stderr)
         return 1

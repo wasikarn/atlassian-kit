@@ -453,6 +453,76 @@ def test_docstring_states_both_find_user_limits():
     assert "1,000" in doc and "empty" in doc and "50" in doc
 
 
+# --- api: ad-hoc GET-only raw reads, jira v3 + confluence v2 -------------------
+
+def test_api_jira_read_hits_the_v3_base_with_the_read_token():
+    code, out, err, op = run_main(
+        ["api", "jira", "/rest/api/3/myself"],
+        standard_routes([(f"{JIRA}/rest/api/3/myself", lambda r: json.dumps({"accountId": "a1"}))]))
+    assert code == 0, err
+    assert json.loads(out) == {"accountId": "a1"}
+    assert op.calls[-1].get_method() == "GET"
+    assert op.calls[-1].full_url == f"{JIRA}/rest/api/3/myself"
+    import base64
+    got = base64.b64decode(op.calls[-1].get_header("Authorization").split(" ", 1)[1]).decode()
+    assert got == f"{EMAIL}:{TOKEN}"
+
+
+def test_api_confluence_read_hits_the_v2_base_with_the_confluence_write_token():
+    CTEXT = f"https://api.atlassian.com/ex/confluence/{CID}/wiki/api/v2"
+    env = ENV_OK + f"ACLI_REST_WRITE_SITE={HOST}\nACLI_REST_WRITE_EMAIL={EMAIL}\nACLI_REST_WRITE_CONFLUENCE_TOKEN=conf-tok\n"
+    code, out, err, op = run_main(
+        ["api", "confluence", "/wiki/api/v2/spaces"],
+        standard_routes([(f"{CTEXT}/spaces", lambda r: json.dumps({"results": []}))]), env=env)
+    assert code == 0, err
+    assert json.loads(out) == {"results": []}
+    assert op.calls[-1].full_url == f"{CTEXT}/spaces"
+    import base64
+    got = base64.b64decode(op.calls[-1].get_header("Authorization").split(" ", 1)[1]).decode()
+    assert got == f"{EMAIL}:conf-tok"
+
+
+def test_api_rejects_an_unknown_product_before_any_request():
+    code, _, err, op = run_main(["api", "slack", "/x"], [])
+    assert code == 1 and "product must be jira or confluence" in err
+    assert op.calls == []
+
+
+def test_api_rejects_paths_outside_the_allowed_prefixes():
+    for product, path in (("jira", "/wiki/api/v2/x"), ("jira", "/rest/../admin"), ("confluence", "/rest/api/3/x"),
+                          ("confluence", "/x"), ("jira", "rest/api/3/x")):
+        code, _, err, op = run_main(["api", product, path], [])
+        assert code == 1 and "path must" in err, (product, path, err)
+        assert op.calls == [], (product, path)
+
+
+def test_api_confluence_refused_when_the_env_lacks_the_confluence_token():
+    env = ENV_OK + f"ACLI_REST_WRITE_SITE={HOST}\nACLI_REST_WRITE_EMAIL={EMAIL}\n"
+    code, _, err, op = run_main(["api", "confluence", "/wiki/api/v2/spaces"], [], env=env)
+    assert code == 1 and "ACLI_REST_WRITE_CONFLUENCE_TOKEN" in err
+    assert op.calls == []  # identity runs (one acli call) but no network happens
+
+
+def test_api_jira_refused_when_the_env_site_does_not_match():
+    code, _, err, op = run_main(["api", "jira", "/rest/api/3/myself"], [],
+                                env=ENV_OK.replace(HOST, "other-site.atlassian.net"))
+    assert code == 1 and "ACLI_REST_READ_SITE" in err
+    assert op.calls == []
+
+
+def test_api_sends_only_get_and_no_body():
+    seen = []
+
+    def route(req):
+        seen.append(req)
+        return "[]"
+
+    code, _, _, _ = run_main(["api", "jira", "/rest/api/3/myself"],
+                             standard_routes([(f"{JIRA}/rest/api/3/myself", route)]))
+    assert code == 0
+    assert all(r.get_method() == "GET" and r.data is None for r in seen)
+
+
 if __name__ == "__main__":
     failed = 0
     tests = [(n, f) for n, f in sorted(globals().items()) if n.startswith("test_") and callable(f)]

@@ -8,6 +8,14 @@ Pre-`1.0.0`: breaking changes may land in any `0.x` release.
 This file starts at `0.1.18` — releases before that predate the changelog. See
 `git log` for the full history back to `0.1.0`.
 
+## [0.1.69] — 2026-11-19
+**`acli-rest-get.py api <jira|confluence> <PATH>` — raw GET-only reads for ad-hoc endpoints.**
+jira takes `/rest/api/3/*` paths with the read token, confluence takes `/wiki/api/v2/*` paths with
+the scoped Confluence token; each product's SITE/EMAIL env keys still must match acli's identity,
+paths outside the two prefixes are refused, and the method stays the GET-only constant. Replaces
+the inline REST probes of the live-verification runs. 49 tests in the read suite (7 new), 70 in the
+write suite.
+
 ## [0.1.68] — 2026-11-19
 **Whole-picture audit fixes: the guard sees the REST scripts, and the alternate target works.**
 `acli-guard` (repo copy and the live dotfiles copy) now matches `acli-rest-write.py` — denied in
