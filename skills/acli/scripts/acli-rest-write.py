@@ -49,6 +49,7 @@ USAGE = ("usage: acli-rest-write.py plan <operation> [--... VALUE] [--env-file F
          "apply <request-file> --confirm <12hex> [--env-file FILE]")
 
 OPERATIONS = {}  # name -> {product, validate(flags)->args, plan(get,args)->(base,body), send(http,args,base,body_text)->text, readback(get,args,base,body_text,result)->bool}
+KEY_RE = re.compile(r"^[A-Z][A-Z0-9_]+-[0-9]+$")
 SPACE_KEY_RE = re.compile(r"^[A-Z][A-Z0-9]*$")
 PAGE_ID_RE = re.compile(r"^[0-9]+$")
 
@@ -308,6 +309,162 @@ def do_apply(opener, run, env_file, flags, pos):
     print(f"applied to {target['host']} and verified by read-back")
     path.unlink()
     return 0
+
+
+# --- operation: issue-set (Jira) --------------------------------------------
+
+CHANGE_FLAGS = {"priority", "parent", "environment-adf", "add-fix-version", "remove-fix-version",
+                "add-affects-version", "remove-affects-version"}
+
+
+def _jira_get_list(get, path, source):
+    rows = get(path, {})
+    if not isinstance(rows, list):
+        raise Fatal(f"unexpected shape from {source} (need a list)")
+    return rows
+
+
+def _names(rows):
+    return {str(r.get("name")) for r in rows if isinstance(r, dict)}
+
+
+def _validate_issue_set(flags):
+    args = dict(flags)
+    if "key" not in args or not KEY_RE.match(str(args["key"])):
+        raise Fatal("--key must be a Jira issue key")
+    if not [k for k in CHANGE_FLAGS if k in args]:
+        raise Fatal(f"usage: issue-set needs at least one change flag: {', '.join('--' + f for f in sorted(CHANGE_FLAGS))}")
+    for flag in ("add-fix-version", "remove-fix-version", "add-affects-version", "remove-affects-version"):
+        if flag in args:
+            items = args[flag] if isinstance(args[flag], list) else [args[flag]]
+            if not all(items):
+                raise Fatal(f"--{flag} needs a value")
+            args[flag] = items
+    if "parent" in args and not KEY_RE.match(str(args["parent"])):
+        raise Fatal("--parent must be a Jira issue key")
+    return args
+
+
+def _plan_issue_set(get, args):
+    key = str(args["key"])
+    current = (get(f"/rest/api/3/issue/{key}", {}).get("fields", {}) or {})
+    def cur_names(field):
+        rows = current.get(field) or []
+        return sorted({str(r.get("name")) for r in rows if isinstance(r, dict)})
+    base = {"priority": (current.get("priority") or {}).get("name"),
+            "fixVersions": cur_names("fixVersions"), "versions": cur_names("versions"),
+            "parentKey": (current.get("parent") or {}).get("key"),
+            "environmentSet": bool(current.get("environment"))}
+    project = key.split("-", 1)[0]
+    fields, updates = {}, {}
+    if "priority" in args:
+        names = _names(_jira_get_list(get, "/rest/api/3/priority", "/rest/api/3/priority"))
+        if args["priority"] not in names:
+            raise Fatal(f"priority {args['priority']!r} is not one of {sorted(names)}")
+        fields["priority"] = {"name": args["priority"]}
+    if "parent" in args:
+        parent = get(f"/rest/api/3/issue/{args['parent']}", {})
+        if str(parent.get("key")) == key:
+            raise Fatal("an issue cannot be its own parent")
+        fields["parent"] = {"key": str(args["parent"])}
+    if "environment-adf" in args:
+        fields["environment"] = _read_adf(args["environment-adf"])
+    for add_flag, remove_flag, field in (("add-fix-version", "remove-fix-version", "fixVersions"),
+                                         ("add-affects-version", "remove-affects-version", "versions")):
+        verbs = []
+        if add_flag in args or remove_flag in args:
+            versions = _names(_jira_get_list(get, f"/rest/api/3/project/{project}/versions",
+                                             f"/rest/api/3/project/{project}/versions"))
+            for name in args.get(add_flag, []):
+                if name not in versions:
+                    raise Fatal(f"version {name!r} does not exist in {project} "
+                                f"(the list is what this account can see)")
+                verbs.append({"add": {"name": name}})
+            for name in args.get(remove_flag, []):
+                if name not in base[field and ("fixVersions" if field == "fixVersions" else "versions") or field]:
+                    raise Fatal(f"version {name!r} is not on issue {key} (current: {base[field]})")
+                verbs.append({"remove": {"name": name}})
+            updates[field] = verbs
+    body = {}
+    if fields: body["fields"] = fields
+    if updates: body["update"] = updates
+    return base, body
+
+
+def _issue_matches(current, body):
+    fields = current.get("fields", {}) or {}
+    if "priority" in body.get("fields", {}):
+        if (fields.get("priority") or {}).get("name") != body["fields"]["priority"].get("name"):
+            return False
+    if "parent" in body.get("fields", {}):
+        if (fields.get("parent") or {}).get("key") != body["fields"]["parent"].get("key"):
+            return False
+    if "environment" in body.get("fields", {}):
+        if body["fields"]["environment"] != fields.get("environment"):
+            return False
+    for field, verbs in body.get("update", {}).items():
+        names = {str(r.get("name")) for r in (fields.get(field) or []) if isinstance(r, dict)}
+        for verb in verbs:
+            for verb_name, item in verb.items():
+                if verb_name == "add" and item.get("name") not in names: return False
+                if verb_name == "remove" and item.get("name") in names: return False
+    return True
+
+
+def _send_issue_set(http, args, base, body_text):
+    return http("PUT", f"/rest/api/3/issue/{args['key']}", body_text.encode())
+
+
+def _readback_issue_set(get, args, base, body_text, result):
+    return _issue_matches(get(f"/rest/api/3/issue/{args['key']}", {}), json.loads(body_text))
+
+
+# --- operation: version-create (Jira) ---------------------------------------
+
+def _validate_version_create(flags):
+    if not re.match(r"^[A-Z][A-Z0-9_]+$", str(flags.get("project", ""))):
+        raise Fatal("--project must be a Jira project key")
+    if not str(flags.get("name", "")):
+        raise Fatal("--name is required")
+    return {"project": str(flags["project"]), "name": str(flags["name"]),
+            **({"description": str(flags["description"])} if "description" in flags else {})}
+
+
+def _plan_version_create(get, args):
+    project = get(f"/rest/api/3/project/{args['project']}", {})
+    project_id = str(project.get("id", ""))
+    if not project_id.isdigit():
+        raise Fatal(f"project {args['project']} did not expose a numeric id")
+    existing = _names(_jira_get_list(get, f"/rest/api/3/project/{args['project']}/versions",
+                                     f"/rest/api/3/project/{args['project']}/versions"))
+    if args["name"] in existing:
+        raise Fatal(f"a version named {args['name']!r} already exists in {args['project']} "
+                    f"(the list is what this account can see)")
+    body = {"projectId": project_id, "name": args["name"]}
+    if "description" in args:
+        body["description"] = args["description"]
+    return {"projectId": project_id, "knownVersions": len(existing)}, body
+
+
+def _send_version_create(http, args, base, body_text):
+    return http("POST", "/rest/api/3/version", body_text.encode())
+
+
+def _readback_version_create(get, args, base, body_text, result):
+    vid = str(result.get("id", "")) if isinstance(result, dict) else ""
+    if not vid:
+        return False
+    v = get(f"/rest/api/3/version/{vid}", {})
+    return str(v.get("name")) == args["name"] and str(v.get("projectId")) == base["projectId"]
+
+
+OPERATIONS["issue-set"] = {"product": "jira", "validate": _validate_issue_set,
+                           "plan": _plan_issue_set, "send": _send_issue_set,
+                           "readback": _readback_issue_set}
+OPERATIONS["version-create"] = {"product": "jira", "validate": _validate_version_create,
+                                "plan": _plan_version_create, "send": _send_version_create,
+                                "readback": _readback_version_create}
+
 
 
 def main(argv, opener=None, run=run_command, env_file=ENV_FILE):

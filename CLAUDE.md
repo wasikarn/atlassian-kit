@@ -40,7 +40,8 @@ python3 skills/acli/scripts/md2adf.py somefile.md | python3 skills/acli/scripts/
   (normalized search table, unwraps every search shape acli has emitted), `acli-rest-get.py`
   (GET-only Jira REST lookups acli lacks: transitions, find-user, createmeta; token from the
   mode-600 `~/.claude/atlassian.env`), `acli-rest-write.py` (plan/apply writes; phase 2 registers
-  `page-create` for Confluence v2; write tokens from the same file).
+  `page-create` for Confluence v2 and the Jira `issue-set`/`version-create`; write tokens from the
+  same file).
   Wrappers: `acli-new.sh` (create from Markdown), `acli-set-desc.sh` (replace the whole
   description), `acli-edit.sh` (runs `acli-edit.py`), `acli-assign.sh` (assign by accountId via
   `edit --from-json`), `acli-ls.sh` (runs `acli-ls.py`). The four write wrappers source

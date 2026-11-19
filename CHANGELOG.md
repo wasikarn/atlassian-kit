@@ -8,6 +8,17 @@ Pre-`1.0.0`: breaking changes may land in any `0.x` release.
 This file starts at `0.1.18` — releases before that predate the changelog. See
 `git log` for the full history back to `0.1.0`.
 
+## [0.1.64] — 2026-11-19
+**`acli-rest-write.py` phase 3: the Jira operations.** `issue-set` (flags `--priority`,
+`--parent`, `--environment-adf`, `--add-fix-version`, `--remove-fix-version`,
+`--add-affects-version`, `--remove-affects-version`, repeatable for the list ones) plans with GETs on
+the issue, `editmeta`-independent `/rest/api/3/priority` and project `versions` lists, refuses an
+unknown priority, a version not in the project, and a remove of a value not on the issue, then applies
+one `PUT /rest/api/3/issue/{key}`
+using `update.add/remove` verbs for the list fields so untouched values survive. `version-create`
+plans the numeric `projectId` and a same-name check, then applies one `POST /rest/api/3/version` and
+reads the version back by the returned id. Repeated flags now collect into lists. 47 tests.
+
 ## [0.1.63] — 2026-11-19
 **`acli-rest-write.py` phase 2: `page-create` for Confluence v2.** The operation validates args
 (--space key, --title, --body-adf ADF doc, optional --parent page id), plans with GETs only (the

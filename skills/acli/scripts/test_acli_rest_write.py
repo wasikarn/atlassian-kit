@@ -382,8 +382,10 @@ def test_tokens_never_reach_stdout_or_stderr_on_error_paths():
     assert WTOKEN not in out + err and RTOKEN not in out + err
 
 
-def test_only_page_create_is_registered():
-    assert sorted(rw.OPERATIONS) == ["page-create"], sorted(rw.OPERATIONS)
+def test_registered_operations_match_the_plan_phases_so_far():
+    assert sorted(rw.OPERATIONS) == ["issue-set", "page-create", "version-create"], sorted(rw.OPERATIONS)
+    for name, op in rw.OPERATIONS.items():
+        assert set(op) >= {"product", "validate", "plan", "send", "readback"}, (name, sorted(op))
     for name, op in rw.OPERATIONS.items():
         assert set(op) >= {"product", "validate", "plan", "send", "readback"}, (name, sorted(op))
 
@@ -546,6 +548,161 @@ def test_page_create_space_lookup_pagination_follows_next():
     routes = conf_routes(space_results=[{"id": SPACE_ID, "key": "DEMO"}])
     code, out, err, _ = plan_page(routes)
     assert code == 0, err
+
+
+# --- issue-set and version-create (phase 3) ---------------------------------
+
+ISSUE = {"id": "10001", "key": "DEMO-1", "fields": {
+    "priority": {"name": "Medium"}, "parent": None, "environment": None,
+    "fixVersions": [], "versions": []}}
+PRIORITIES = [{"id": "3", "name": "Low"}, {"id": "2", "name": "Medium"}, {"id": "1", "name": "High"}]
+VERSIONS = [{"id": "11", "name": "1.0"}, {"id": "12", "name": "2.0"}]
+EDITMETA = {"fields": {"priority": {"required": False, "name": "Priority"},
+                       "fixVersions": {"name": "Fix Version"},
+                       "versions": {"name": "Affects versions"},
+                       "environment": {"name": "Environment"}}}
+NEW_ISSUE = dict(ISSUE, fields=dict(ISSUE["fields"], priority={"name": "High"},
+                                    fixVersions=[{"name": "1.0"}]))
+
+
+def jira_routes(state=None):
+    state = state if state is not None else {"issue": ISSUE}
+
+    def route(req):
+        method, u = req.get_method(), urllib.parse.urlsplit(req.full_url).path
+        if method == "GET" and u.endswith("/search/jql"):
+            return json.dumps({"issues": [], "names": {}})
+        if method == "GET" and "/editmeta" in u:
+            return json.dumps(EDITMETA)
+        if method == "GET" and u.endswith("/priority"):
+            return json.dumps(PRIORITIES)
+        if method == "GET" and "/versions" in u:
+            return json.dumps(VERSIONS)
+        if method == "GET" and u.endswith("/project/DEMO"):
+            return json.dumps({"id": "10001", "key": "DEMO", "name": "Demo"})
+        if method == "GET" and "/issue/DEMO-1" in u:
+            return json.dumps(state["issue"])
+        if method == "GET" and "/issue/DEMO-2" in u:
+            return json.dumps({"id": "10002", "key": "DEMO-2", "fields": {}})
+        if method == "PUT" and "/issue/" in u:
+            state["put"] = json.loads(req.data.decode())
+            return ""  # 204 body is empty
+        if method == "POST" and u.endswith("/version"):
+            state["posted_version"] = json.loads(req.data.decode())
+            return json.dumps({"id": "13", "name": "3.0", "projectId": "10001"})
+        if method == "GET" and "/version/13" in u:
+            return json.dumps({"id": "13", "name": "3.0", "projectId": "10001"})
+        raise AssertionError(f"unexpected jira call {method} {u}")
+
+    return [(JIRA, route)]
+
+
+def run_issue_set(argv_extra, routes, env=None, register=True):
+    argv = ["plan", "issue-set", "--key", "DEMO-1"] + argv_extra
+    return run(argv, routes + [tenant_route()], env=env)
+
+
+def test_issue_set_builds_update_verbs_and_priority_from_plan_reads():
+    code, out, err, op = run_issue_set(["--priority", "High", "--add-fix-version", "1.0"], jira_routes())
+    assert code == 0, err
+    data = json.loads(request_path(out).read_text())
+    sent, body = data["base"], json.loads(data["body_text"])
+    assert sent["priority"] == "Medium" and sent["fixVersions"] == []
+    assert body["update"]["fixVersions"] == [{"add": {"name": "1.0"}}]
+    assert body["fields"]["priority"] == {"name": "High"}
+
+
+def test_issue_set_without_any_change_is_a_usage_error():
+    code, out, err, op = run_issue_set([], jira_routes())
+    assert code == 1 and "usage" in err.lower()
+
+
+def test_issue_set_rejects_an_unknown_priority_before_writing_the_request():
+    code, out, err, op = run_issue_set(["--priority", "Urgent"], jira_routes())
+    assert code == 1 and "Urgent" in err and "priority" in err
+    assert not any(r.get_method() == "PUT" for r in op.calls)
+
+
+def test_issue_set_rejects_an_unknown_version_name_from_the_project_list():
+    code, out, err, op = run_issue_set(["--add-fix-version", "9.9"], jira_routes())
+    assert code == 1 and "9.9" in err
+    assert not any(r.get_method() == "PUT" for r in op.calls)
+
+
+def test_issue_set_rejects_removing_a_version_that_is_not_on_the_issue():
+    code, out, err, op = run_issue_set(["--remove-fix-version", "1.0"], jira_routes())
+    assert code == 1 and "not on" in err
+    assert not any(r.get_method() == "PUT" for r in op.calls)
+
+
+def test_issue_set_apply_sends_the_file_body_and_verifies_the_readback():
+    code, out, err, _ = run_issue_set(["--priority", "High", "--add-fix-version", "1.0"],
+                                      jira_routes(state={"issue": ISSUE}))
+    path, conf = request_path(out), confirm_of(out)
+    puts, issue_state = [], {"issue": ISSUE}
+    routes = jira_routes(issue_state)
+    orig = routes[0][1]
+
+    def route2(req):  # stateful like a server: the read-back happens after the PUT
+        if req.get_method() == "PUT":
+            puts.append(json.loads(req.data.decode()))
+            issue_state["issue"] = NEW_ISSUE
+        return orig(req)
+
+    routes[0] = (JIRA, route2)
+    code, out2, err2, op2 = run(["apply", str(path), "--confirm", conf], routes + [tenant_route()], env=env_conf())
+    assert code == 0, err2
+    assert puts[0]["fields"]["priority"] == {"name": "High"}, puts
+    assert puts[0]["update"]["fixVersions"] == [{"add": {"name": "1.0"}}]
+    assert not path.exists()
+
+
+def test_issue_set_apply_refuses_when_the_issue_changed_since_the_plan():
+    code, out, err, _ = run_issue_set(["--priority", "High"], jira_routes(state={"issue": ISSUE}))
+    path, conf = request_path(out), confirm_of(out)
+    moved = dict(ISSUE, fields=dict(ISSUE["fields"], priority={"name": "Low"}))
+    code, out2, err2, op2 = run(["apply", str(path), "--confirm", conf],
+                                jira_routes(state={"issue": moved}) + [tenant_route()], env=env_conf())
+    assert code == 1 and "changed since the plan" in err2
+    assert not any(r.get_method() == "PUT" for r in op2.calls)
+
+
+def test_issue_set_parent_and_environment_flags_are_carryable():
+    env_tmp = env_file()
+    body_file = adf_file({"type": "doc", "version": 1, "content": [{"type": "paragraph",
+                          "content": [{"type": "text", "text": "prod"}]}]})
+    code, out, err, op = run_issue_set(["--parent", "DEMO-2", "--environment-adf", str(body_file)], jira_routes())
+    assert code == 0, err
+    data = json.loads(request_path(out).read_text())
+    body = json.loads(data["body_text"])
+    assert body["fields"]["parent"] == {"key": "DEMO-2"}
+    assert body["fields"]["environment"]["content"][0]["content"][0]["text"] == "prod"
+
+
+def test_version_create_builds_project_id_and_posts_the_version():
+    code, out, err, op = run(["plan", "version-create", "--project", "DEMO", "--name", "3.0"], jira_routes() + [tenant_route()], env=env_conf())
+    assert code == 0, err
+    data = json.loads(request_path(out).read_text())
+    body = json.loads(data["body_text"])
+    assert body == {"projectId": "10001", "name": "3.0"}
+    assert "already exists" not in err
+
+
+def test_version_create_refuses_aduplicate_name():
+    code, out, err, op = run(["plan", "version-create", "--project", "DEMO", "--name", "1.0"], jira_routes() + [tenant_route()], env=env_conf())
+    assert code == 1 and "already exists" in err
+    assert not any(r.get_method() == "POST" for r in op.calls)
+
+
+def test_version_create_apply_posts_and_verifies_by_id():
+    code, out, err, _ = run(["plan", "version-create", "--project", "DEMO", "--name", "3.0"], jira_routes() + [tenant_route()], env=env_conf())
+    path, conf = request_path(out), confirm_of(out)
+    state = {}
+    routes = jira_routes(state) + [tenant_route()]
+    code, out2, err2, op2 = run(["apply", str(path), "--confirm", conf], routes, env=env_conf())
+    assert code == 0, err2
+    assert state["posted_version"] == {"projectId": "10001", "name": "3.0"}
+    assert not path.exists()
 
 
 if __name__ == "__main__":
