@@ -475,7 +475,7 @@ def test_page_create_plan_finds_the_space_on_the_second_page_and_builds_the_wire
 
 def test_page_create_plan_refuses_a_space_key_with_zero_or_two_matches():
     code, out, err, op = plan_page(conf_routes(space_results=[{"id": "9", "key": "OTHER"}]))
-    assert code == 1 and "spaces named DEMO" in err and "not proof" in err or "DEMO" in err
+    assert code == 1 and "expected exactly one space named DEMO" in err and "what this account can see" in err
     assert not any(r.get_method() == "POST" for r in op.calls)
 
 
@@ -873,6 +873,155 @@ def test_page_fetch_never_applies():
     code, out, err, op = run(["apply", str(path), "--confirm", digest],
                              [(CONF, lambda r: json.dumps(LIVE_PAGE))] + [tenant_route()], env=env_conf())
     assert code == 1 and "read-only" in err
+
+
+# --- audit fixes (0.1.67): exit-3 on read-back failure, allow-node-loss through
+# --- apply, repeated flags collect, unknown/typo flags are fatal ---------------
+
+def test_apply_exit_3_when_the_read_back_get_fails_after_the_send():
+    code, out, err, _ = plan_for()
+    path, conf = request_path(out), confirm_of(out)
+    gets, sent = {"n": 0}, []
+
+    def issue(req):
+        if req.get_method() == "PUT":
+            sent.append(req.data)
+            return json.dumps({"ok": True})
+        gets["n"] += 1
+        if gets["n"] == 1:
+            return json.dumps({"summary": "old title"})
+        raise urllib.error.HTTPError(req.full_url, 502, "Bad Gateway",
+                                     http.client.HTTPMessage(), io.BytesIO(b""))
+
+    code, out2, err2, op = run(["apply", str(path), "--confirm", conf],
+                               [tenant_route(), (f"{JIRA}/rest/api/3/issue/DEMO-1", issue)])
+    assert code == 3, err2
+    assert len(sent) == 1, "the write fired; the exit must still be 3, never 1"
+    assert "SENT BUT UNVERIFIED" in err2 and "do not re-run `apply`" in err2
+    assert path.exists()
+
+
+def test_apply_exit_3_when_the_read_back_times_out_after_the_send():
+    code, out, err, _ = plan_for()
+    path, conf = request_path(out), confirm_of(out)
+    gets, sent = {"n": 0}, []
+
+    def issue(req):
+        if req.get_method() == "PUT":
+            sent.append(req.data)
+            return json.dumps({"ok": True})
+        gets["n"] += 1
+        if gets["n"] == 1:
+            return json.dumps({"summary": "old title"})
+        raise TimeoutError("slow read-back")
+
+    code, out2, err2, op = run(["apply", str(path), "--confirm", conf],
+                               [tenant_route(), (f"{JIRA}/rest/api/3/issue/DEMO-1", issue)])
+    assert code == 3, err2
+    assert len(sent) == 1
+    assert "SENT BUT UNVERIFIED" in err2
+
+
+def test_apply_exit_2_includes_the_server_rejection_body():
+    code, out, err, op = plan_page(conf_routes(space_results=[{"id": SPACE_ID, "key": "DEMO"}]))
+    path, conf = request_path(out), confirm_of(out)
+
+    def route(req):
+        u, m = urllib.parse.urlsplit(req.full_url).path, req.get_method()
+        if m == "GET" and u.endswith("/spaces"):
+            return json.dumps({"results": [{"id": SPACE_ID, "key": "DEMO"}], "_links": {}})
+        if m == "GET" and u.endswith("/pages"):
+            return json.dumps({"results": [], "_links": {}})
+        raise urllib.error.HTTPError(req.full_url, 409, "Conflict", http.client.HTTPMessage(),
+                                     io.BytesIO(b'{"errors":[{"title":"A page with this title already exists"}]}'))
+
+    code, out2, err2, op2 = run(["apply", str(path), "--confirm", conf],
+                                [(CONF, route)] + [tenant_route()], env=env_conf())
+    assert code == 2, err2
+    assert "already exists" in err2, "the server's 4xx body must reach the operator"
+    assert path.exists()
+
+
+def test_page_update_apply_carries_allow_node_loss_through_the_file():
+    d2, base_abs, edited_path, old2 = _planned_update(LIVE_PAGE, EDITED_DROP_MACRO)
+    try:
+        code, out, err, _ = run(["plan", "page-update", "--base", str(base_abs), "--body-adf", str(edited_path),
+                                 "--allow-node-loss", "extension"],
+                                [(CONF, lambda req: json.dumps(LIVE_PAGE))] + [tenant_route()], env=env_conf())
+        assert code == 0, err
+        path, conf = request_path(out), confirm_of(out)
+        state = {"page": LIVE_PAGE}
+
+        def route(req):
+            if req.get_method() == "PUT":
+                state["put"] = json.loads(req.data.decode())
+                state["page"] = dict(LIVE_PAGE, version={"number": 8},
+                                     body={"atlas_doc_format": {"representation": "atlas_doc_format",
+                                                                "value": state["put"]["body"]["value"]}})
+                return json.dumps(state["page"])
+            return json.dumps(state["page"])
+
+        code, out2, err2, op2 = run(["apply", str(path), "--confirm", conf],
+                                    [(CONF, route)] + [tenant_route()], env=env_conf())
+        assert code == 0, err2
+        assert json.loads(state["put"]["body"]["value"]) == EDITED_DROP_MACRO
+        assert not path.exists()
+    finally:
+        os.chdir(old2)
+
+
+def test_parse_flags_collects_repeated_flags_in_order():
+    flags, pos = rw.parse_flags(["--key", "DEMO-1", "--remove-fix-version", "1.0",
+                                 "--remove-fix-version", "2.0", "positional"])
+    assert flags == {"key": "DEMO-1", "remove-fix-version": ["1.0", "2.0"]}
+    assert pos == ["positional"]
+
+
+def test_repeated_remove_flag_collects_all_values_into_the_write():
+    both = jira_routes({"issue": dict(ISSUE, fields=dict(ISSUE["fields"],
+                                                         fixVersions=[{"name": "1.0"}, {"name": "2.0"}]))})
+    code, out, err, op = run_issue_set(["--remove-fix-version", "1.0", "--remove-fix-version", "2.0"], both)
+    assert code == 0, err
+    body = json.loads(json.loads(request_path(out).read_text())["body_text"])
+    assert body["update"]["fixVersions"] == [{"remove": {"name": "1.0"}}, {"remove": {"name": "2.0"}}]
+
+
+def test_a_typo_second_change_is_fatal_not_silently_dropped():
+    both = jira_routes({"issue": dict(ISSUE, fields=dict(ISSUE["fields"],
+                                                         fixVersions=[{"name": "1.0"}, {"name": "2.0"}]))})
+    code, out, err, op = run_issue_set(["--remove-fix-version", "1.0", "--remove-fix-versions", "2.0"], both)
+    assert code == 1 and "unknown flag" in err
+    assert op.calls == []
+
+
+def test_a_single_value_flag_given_twice_is_fatal():
+    flags, _ = rw.parse_flags(["--key", "DEMO-1", "--key", "DEMO-2"])
+    assert flags["key"] == ["DEMO-1", "DEMO-2"]
+    try:
+        rw._validate_issue_set(flags, ())
+    except rw.Fatal as e:
+        assert "--key" in str(e) and "once" in str(e)
+    else:
+        raise AssertionError("a repeated --key passed validation")
+
+
+def test_page_update_refuses_unknown_flags():
+    d2, base_abs, edited_path, old2 = _planned_update(LIVE_PAGE, EDITED_ADD_LINE)
+    try:
+        code, out, err, op = run(["plan", "page-update", "--base", str(base_abs), "--body-adf", str(edited_path),
+                                  "--bogus", "1"],
+                                 [(CONF, lambda req: json.dumps(LIVE_PAGE))] + [tenant_route()], env=env_conf())
+        assert code == 1 and "unknown flag" in err
+        assert op.calls == []
+    finally:
+        os.chdir(old2)
+
+
+def test_page_fetch_takes_no_flags():
+    code, out, err, op = run(["page-fetch", "555", "--bogus", "1"],
+                             [(CONF, lambda req: json.dumps(LIVE_PAGE))] + [tenant_route()], env=env_conf())
+    assert code == 1 and "no flags" in err
+    assert op.calls == []
 
 
 if __name__ == "__main__":

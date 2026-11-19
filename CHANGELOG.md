@@ -8,6 +8,18 @@ Pre-`1.0.0`: breaking changes may land in any `0.x` release.
 This file starts at `0.1.18` — releases before that predate the changelog. See
 `git log` for the full history back to `0.1.0`.
 
+## [0.1.67] — 2026-11-19
+**Deep-audit fixes for `acli-rest-write.py` (the 0.1.58-0.1.66 run).** A read-back that fails after
+the send (HTTP error, timeout, unreadable body) now exits 3 (sent but unverified) instead of leaking
+into exit 1, which invited re-running a write that had already fired; `--allow-node-loss` now
+survives plan→apply (apply's re-validation keeps the stored allowlist instead of dropping it and
+failing with a false "live state changed"); repeated flags really collect into lists — 0.1.64's
+claim now holds — and a repeated single-value flag is refused; unknown or typo'd flags are refused
+loudly for every operation, including `page-fetch` (no flags); exit 2 prints the server's 4xx error
+body; the docstring, the garbled 0.1.62 changelog fragment, the stale "phase 2 registers" line in
+CLAUDE.md and the "genuinely MCP-only" write rows in `acli/SKILL.md` now match the current state.
+65 tests. First live writes remain blocked by site permissions (admin matter).
+
 ## [0.1.66] — 2026-11-19
 **Docs name the write script.** `acli/SKILL.md` § "When acli can't" now documents `acli-rest-write.py`
 (plan/apply, exit codes, tokens), and the write rows — Confluence page create/update, priority/
@@ -59,7 +71,7 @@ state and body text but not method, path or URL (apply picks those from code, re
 the live state, and refuses on any mismatch); `apply` enforces a confirm hash over the file bytes, a
 strict schema, a 30-minute age limit, and exits 0/1/2/3 for verified / refused / rejected by the server
 / sent-but-unverified. 26 tests, fake opener, no network. Tokens: distinct ACLI_REST_WRITE_* keys,
-`--env-file` names an alternate target whose site must differ from acli's and is labelled ALTERNATE TARGET. No docs name the write script yet; the acli-guard change for it is still pending the operator's OK.g the operator's OK.
+`--env-file` names an alternate target whose site must differ from acli's and is labelled ALTERNATE TARGET. No docs name the write script yet; the acli-guard change for it is still pending the operator's OK.
 
 ## [0.1.61] — 2026-11-19
 **`acli-rest-get.py` reads its token from an env file, not the Keychain.** The operator's

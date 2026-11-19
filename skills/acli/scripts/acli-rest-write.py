@@ -15,15 +15,17 @@ refuses unless base and body match the file, then sends and reads back. The conf
 did not change after the plan was shown; the operator reading the preview is the approval.
 
 Exit codes: 0 sent and verified; 1 refused locally, no write request left the machine; 2 sent and
-rejected by the server (4xx); 3 sent but unverified — timeout or connection error once the write
-started, a 5xx, or a read-back that does not match. Do not re-run `apply` at 3 before checking.
+rejected by the server (4xx — the server's error body is printed); 3 sent but unverified — timeout
+or connection error once the write started, a 5xx, or a read-back that fails or does not match.
+Do not re-run `apply` at 3 before checking.
 
 Credentials come from a mode-600 env file: ACLI_REST_WRITE_SITE, ACLI_REST_WRITE_EMAIL,
 ACLI_REST_WRITE_JIRA_TOKEN, ACLI_REST_WRITE_CONFLUENCE_TOKEN. The default file is ~/.claude/atlassian.env
 and must agree with `acli jira auth status`. --env-file names an alternate target (a test site); it must
 be a different site than acli's, and the preview labels it ALTERNATE TARGET. The acli-guard hook sees
 every call of this script; approving a preview covers calls made through it and nothing else.
-Phase 1 registers no operation.
+Operations: Confluence page-create / page-fetch (read-only; writes the base+adf files) / page-update;
+Jira issue-set / version-create.
 """
 import datetime
 import hashlib
@@ -90,6 +92,9 @@ def _conf_paged(get, path, params):
 
 
 def _validate_page_create(flags, pos=()):
+    _check_flags(flags, {"space", "title", "parent", "body-adf"}, "page-create")
+    for f in ("space", "title", "parent", "body-adf"):
+        _one(flags, f)
     if not SPACE_KEY_RE.match(str(flags.get("space", ""))):
         raise Fatal("--space must be an uppercase space key")
     if not str(flags.get("title", "")):
@@ -161,12 +166,33 @@ def parse_flags(rest):
         if rest[i].startswith("--") and len(rest[i]) > 2:
             if i + 1 >= len(rest):
                 raise Fatal(f"flag {rest[i]} needs a value")
-            flags[rest[i][2:]] = rest[i + 1]
+            key = rest[i][2:]
+            if key in flags:  # a repeated flag collects its values, in order
+                if isinstance(flags[key], list):
+                    flags[key].append(rest[i + 1])
+                else:
+                    flags[key] = [flags[key], rest[i + 1]]
+            else:
+                flags[key] = rest[i + 1]
             i += 2
         else:
             pos.append(rest[i])
             i += 1
     return flags, pos
+
+
+def _one(flags, name):
+    """The single value of --name, refusing a repeated flag."""
+    value = flags.get(name)
+    if isinstance(value, list):
+        raise Fatal(f"--{name} was given more than once; it takes a single value")
+    return value
+
+
+def _check_flags(flags, known, op):
+    extra = sorted(set(flags) - set(known))
+    if extra:
+        raise Fatal(f"unknown flag(s) for {op}: " + ", ".join(f"--{f}" for f in extra))
 
 
 def resolve_target(opener, run, flags, env_file, product):
@@ -260,7 +286,7 @@ def _exit3(reason, result=None):
 def do_apply(opener, run, env_file, flags, pos):
     if len(pos) != 1 or "confirm" not in flags:
         raise Fatal(USAGE)
-    path, want = pathlib.Path(pos[0]), flags["confirm"]
+    path, want = pathlib.Path(pos[0]), _one(flags, "confirm")
     try:
         raw = path.read_bytes()
     except FileNotFoundError:
@@ -307,15 +333,19 @@ def do_apply(opener, run, env_file, flags, pos):
         result_text = op["send"](http, args, base, data["body_text"])
     except HttpError as e:
         if e.code < 500:
-            return _exit2(e.code, f"HTTP {e.code} from the write")
-        return _exit3(f"HTTP {e.code} from the write")
+            return _exit2(e.code, str(e))
+        return _exit3(str(e))
     except NetError as e:
         return _exit3(f"no answer from the server ({e})")
     try:
         result = json.loads(result_text)
     except ValueError:
         result = result_text[:200]
-    if not op["readback"](get, args, base, data["body_text"], result):
+    try:
+        ok = op["readback"](get, args, base, data["body_text"], result)
+    except (Fatal, ValueError) as e:
+        return _exit3(f"the read-back failed ({e})")
+    if not ok:
         return _exit3("the read-back does not match what was sent", str(result)[:200])
     print(f"applied to {target['host']} and verified by read-back")
     path.unlink()
@@ -340,6 +370,9 @@ def _names(rows):
 
 
 def _validate_issue_set(flags, pos=()):
+    _check_flags(flags, {"key", *CHANGE_FLAGS}, "issue-set")
+    for f in ("key", "parent", "priority", "environment-adf"):
+        _one(flags, f)
     args = dict(flags)
     if "key" not in args or not KEY_RE.match(str(args["key"])):
         raise Fatal("--key must be a Jira issue key")
@@ -433,6 +466,9 @@ def _readback_issue_set(get, args, base, body_text, result):
 # --- operation: version-create (Jira) ---------------------------------------
 
 def _validate_version_create(flags, pos=()):
+    _check_flags(flags, {"project", "name", "description"}, "version-create")
+    for f in ("project", "name", "description"):
+        _one(flags, f)
     if not re.match(r"^[A-Z][A-Z0-9_]+$", str(flags.get("project", ""))):
         raise Fatal("--project must be a Jira project key")
     if not str(flags.get("name", "")):
@@ -515,6 +551,9 @@ def _page_snapshot(get, page_id):
 
 
 def _validate_page_fetch(flags, pos):
+    extra = sorted(set(flags))
+    if extra:
+        raise Fatal(f"page-fetch takes no flags (got: {', '.join(f'--{f}' for f in extra)})")
     if len(pos) != 1 or not PAGE_ID_RE.match(str(pos[0])):
         raise Fatal("usage: page-fetch <page id>")
     return {"page": str(pos[0])}
@@ -533,11 +572,16 @@ def _plan_page_fetch(get, args):
 
 
 def _validate_page_update(flags, pos):
+    # allowNodeLoss is this same validate's stored key: apply re-runs validate on the
+    # request file's args, where --allow-node-loss already became allowNodeLoss.
+    _check_flags(flags, {"base", "body-adf", "title", "allow-node-loss", "allowNodeLoss"}, "page-update")
+    for f in ("base", "body-adf", "title"):
+        _one(flags, f)
     if "base" not in flags:
         raise Fatal("usage: page-update --base <*.base.json> --body-adf <edited.adf.json> [--title T] [--allow-node-loss TYPE]")
     if "body-adf" not in flags:
         raise Fatal("--body-adf is required")
-    allow = flags.get("allow-node-loss", [])
+    allow = flags.get("allow-node-loss") or flags.get("allowNodeLoss") or []
     allow = [allow] if isinstance(allow, str) else list(allow)
     unknown = [a for a in allow if a not in PRESERVE_TYPES]
     if unknown:
@@ -618,7 +662,7 @@ def main(argv, opener=None, run=run_command, env_file=ENV_FILE):
             return do_apply(opener or default_opener(), run, env_file, flags, pos)
         if mode == "page-fetch":
             op = OPERATIONS["page-fetch"]
-            args = op["validate"](flags, pos)
+            args = op["validate"]({k: v for k, v in flags.items() if k != "env-file"}, pos)
             _, _, _, get, _ = resolve_target(opener or default_opener(), run, flags, env_file, op["product"])
             base, body = op["plan"](get, args)
             print(json.dumps({"base": base, "body": body}, ensure_ascii=False))
