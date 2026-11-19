@@ -39,8 +39,8 @@ python3 skills/acli/scripts/md2adf.py somefile.md | python3 skills/acli/scripts/
   read-modify-write, since `acli edit --description` replaces the body), `acli-ls.py`
   (normalized search table, unwraps every search shape acli has emitted), `acli-rest-get.py`
   (GET-only Jira REST lookups acli lacks: transitions, find-user, createmeta; token from the
-  mode-600 `~/.claude/atlassian.env`), `acli-rest-write.py` (plan/apply writes; phase 2 registers
-  the full set: Confluence `page-create`/`page-fetch`/`page-update` (base-file + hash flow,
+  mode-600 `~/.claude/atlassian.env`), `acli-rest-write.py` (plan/apply writes; registers
+  Confluence `page-create`/`page-fetch`/`page-update` (base-file + hash flow,
   node-loss gate) and Jira `issue-set`/`version-create`; write tokens from the same file).
   Wrappers: `acli-new.sh` (create from Markdown), `acli-set-desc.sh` (replace the whole
   description), `acli-edit.sh` (runs `acli-edit.py`), `acli-assign.sh` (assign by accountId via
