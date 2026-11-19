@@ -8,6 +8,13 @@ Pre-`1.0.0`: breaking changes may land in any `0.x` release.
 This file starts at `0.1.18` — releases before that predate the changelog. See
 `git log` for the full history back to `0.1.0`.
 
+## [0.1.71] — 2026-11-19
+**Fix: version-edit `--release-date` never applied.** The plan stored the field under the wire name
+`releaseDate`, so `apply`'s re-validation (which re-runs the validator on the file's args) refused it
+as an unknown flag before any request — the same stored-key-vs-CLI-key class that bit
+`--allow-node-loss` in 0.1.67. Args now keep the CLI key (`release-date`) and the wire body maps it
+in the plan; a round-trip test pins it. 76 write tests.
+
 ## [0.1.70] — 2026-11-19
 **`version-edit` and `version-delete` operations; api-read hardening.** The raw Jira version
 lifecycle landed in `acli-rest-write.py`: `version-edit --id <id>` (PUT /version/{id}; `--name`,

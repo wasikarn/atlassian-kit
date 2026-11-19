@@ -1172,6 +1172,20 @@ def test_version_delete_passes_the_escalation_toggles_as_query_params():
     assert q == {"deleteFixedIssues": ["true"], "moveAffectedIssuesTo": ["18400"]}
 
 
+def test_version_edit_round_trips_a_release_date_edit():
+    # regression: release-date was stored under releaseDate and apply's re-validation refused it
+    state = {"v": {"id": "18329", "name": "1.0", "description": "", "projectId": "17951",
+                   "archived": False, "released": False, "releaseDate": None}}
+    code, out, err, op = run(["plan", "version-edit", "--id", "18329", "--release-date", "2027-01-31"],
+                             _version_routes(state) + [tenant_route()])
+    assert code == 0, err
+    path, conf = request_path(out), confirm_of(out)
+    code, out2, err2, op2 = run(["apply", str(path), "--confirm", conf],
+                                _version_routes(state) + [tenant_route()])
+    assert code == 0, err2
+    assert state["v"]["releaseDate"] == "2027-01-31"
+
+
 if __name__ == "__main__":
     failed = 0
     tests = [(n, f) for n, f in sorted(globals().items()) if n.startswith("test_") and callable(f)]

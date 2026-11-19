@@ -554,8 +554,12 @@ def _validate_version_edit(flags, pos=()):
     if "release-date" in flags:
         if not re.match(r"^\d{4}-\d{2}-\d{2}$", str(flags["release-date"])):
             raise Fatal("--release-date must be YYYY-MM-DD")
-        args["releaseDate"] = str(flags["release-date"])
+        args["release-date"] = str(flags["release-date"])  # CLI name: apply re-validates the stored args
     return args
+
+
+_VERSION_EDIT_WIRE = (("name", "name"), ("description", "description"), ("released", "released"),
+                      ("archived", "archived"), ("release-date", "releaseDate"))
 
 
 def _plan_version_edit(get, args):
@@ -563,7 +567,7 @@ def _plan_version_edit(get, args):
         raise Fatal("--id must be a numeric version id")
     v = get(f"/rest/api/3/version/{args['id']}", {})
     base = {k: v.get(k) for k in ("id", "name", "description", "archived", "released", "releaseDate")}
-    body = {k: args[k] for k in ("name", "description", "released", "archived", "releaseDate") if k in args}
+    body = {wire: args[cli] for cli, wire in _VERSION_EDIT_WIRE if cli in args}
     return base, body
 
 
