@@ -5,9 +5,14 @@
   acli-rest-get.py find-user QUERY
   acli-rest-get.py createmeta PROJECT-KEY [ISSUETYPE-ID]
 
-Identity: site and email come from `acli jira auth status` only. The token is read from the macOS
-Keychain (service acli-rest-read:<host>, account <email>) and goes only into the Authorization
-header sent to api.atlassian.com. It is never printed.
+Identity: site and email come from `acli jira auth status` only. The token is read from
+~/.claude/atlassian.env, which must be mode 600 and hold three lines written for that identity:
+
+  ACLI_REST_READ_SITE=<site host>
+  ACLI_REST_READ_EMAIL=<email>
+  ACLI_REST_READ_TOKEN=<scoped API token>
+
+The token goes only into the Authorization header sent to api.atlassian.com. It is never printed.
 
 find-user is a best-effort search with two limits: it returns one page of at most 50 users, and
 Jira searches at most 1,000 users, so an empty result is not proof the user does not exist (a
@@ -17,6 +22,7 @@ Checked against a live site on 2026-11-19 with a scoped token (read:jira-work, r
 """
 import base64
 import json
+import pathlib
 import re
 import subprocess
 import sys
@@ -32,6 +38,7 @@ ISSUETYPE_RE = re.compile(r"^[0-9]+$")
 API_HOST = "api.atlassian.com"
 METHOD = "GET"  # the only method this script may send
 TIMEOUT = 30
+ENV_FILE = pathlib.Path.home() / ".claude" / "atlassian.env"
 FIND_USER_MAX = 50
 USAGE = ("usage: acli-rest-get.py transitions ISSUE-KEY | find-user QUERY | "
          "createmeta PROJECT-KEY [ISSUETYPE-ID]")
@@ -108,19 +115,29 @@ def cloud_id(host, opener):
     return cid
 
 
-def keychain_token(host, email, run):
-    service = f"acli-rest-read:{host}"
-    r = run(["security", "find-generic-password", "-s", service, "-a", email, "-w"])
-    if r.returncode != 0:
-        raise Fatal(f"no Keychain item for service {service!r}, account {email!r}")
-    return r.stdout.rstrip("\n")
+def env_token(host, email, env_file):
+    """Return the token from env_file, only if the file is private and written for this site and email."""
+    try:
+        if env_file.stat().st_mode & 0o077:
+            raise Fatal(f"{env_file} is readable by group or others; run: chmod 600 {env_file}")
+        text = env_file.read_text()
+    except FileNotFoundError:
+        raise Fatal(f"token file {env_file} not found (see the script docstring)") from None
+    pairs = re.findall(r"^\s*(?:export\s+)?(ACLI_REST_READ_[A-Z]+)=(.*?)\s*$", text, re.M)
+    values = {k: v[1:-1] if len(v) > 1 and v[0] == v[-1] and v[0] in "\"'" else v for k, v in pairs}
+    for key, want in (("ACLI_REST_READ_SITE", host), ("ACLI_REST_READ_EMAIL", email)):
+        if values.get(key) != want:
+            raise Fatal(f"{key} in {env_file} does not match `acli jira auth status`")
+    if not values.get("ACLI_REST_READ_TOKEN"):
+        raise Fatal(f"ACLI_REST_READ_TOKEN is missing in {env_file}")
+    return values["ACLI_REST_READ_TOKEN"]
 
 
-def jira_session(opener, run):
+def jira_session(opener, run, env_file):
     """Resolve the target and return jira_get(path, params) bound to it."""
     host, email = acli_identity(run)
+    token = env_token(host, email, env_file)  # before any request
     cid = cloud_id(host, opener)
-    token = keychain_token(host, email, run)
     print(f"target: {host} ({cid}) as {email}", file=sys.stderr)
     base = f"https://{API_HOST}/ex/jira/{cid}"
 
@@ -188,10 +205,10 @@ def parse_args(args):
     raise Fatal(USAGE)
 
 
-def main(argv, opener=None, run=run_command):
+def main(argv, opener=None, run=run_command, env_file=ENV_FILE):
     try:
         lookup, args = parse_args(argv[1:])
-        result = lookup(jira_session(opener or default_opener(), run), *args)
+        result = lookup(jira_session(opener or default_opener(), run, env_file), *args)
     except Fatal as e:
         print(f"FATAL: {e}", file=sys.stderr)
         return 1

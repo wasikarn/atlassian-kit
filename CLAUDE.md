@@ -39,7 +39,7 @@ python3 skills/acli/scripts/md2adf.py somefile.md | python3 skills/acli/scripts/
   read-modify-write, since `acli edit --description` replaces the body), `acli-ls.py`
   (normalized search table, unwraps every search shape acli has emitted), `acli-rest-get.py`
   (GET-only Jira REST lookups acli lacks: transitions, find-user, createmeta; token from the
-  macOS Keychain).
+  mode-600 `~/.claude/atlassian.env`).
   Wrappers: `acli-new.sh` (create from Markdown), `acli-set-desc.sh` (replace the whole
   description), `acli-edit.sh` (runs `acli-edit.py`), `acli-assign.sh` (assign by accountId via
   `edit --from-json`), `acli-ls.sh` (runs `acli-ls.py`). The four write wrappers source

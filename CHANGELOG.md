@@ -8,6 +8,14 @@ Pre-`1.0.0`: breaking changes may land in any `0.x` release.
 This file starts at `0.1.18` — releases before that predate the changelog. See
 `git log` for the full history back to `0.1.0`.
 
+## [0.1.61] — 2026-11-19
+**`acli-rest-get.py` reads its token from an env file, not the Keychain.** The operator's
+`secret-read-guard` hook blocks direct reads of `*.env` files, while nothing guarded
+`security find-generic-password -w`. The token now lives in `~/.claude/atlassian.env`
+(`ACLI_REST_READ_SITE`, `ACLI_REST_READ_EMAIL`, `ACLI_REST_READ_TOKEN`). The script refuses the file
+when it is readable by group or others, or when its site or email differ from `acli jira auth status`,
+and it checks the file before any request. It no longer spawns `security`. 42 tests.
+
 ## [0.1.60] — 2026-11-19
 **`acli-rest-get.py` runs against a live site; the skill now names it.** The first live run with a
 scoped token (`read:jira-work`, `read:jira-user`) passed for `transitions` and `find-user` and failed

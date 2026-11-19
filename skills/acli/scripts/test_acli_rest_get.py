@@ -1,11 +1,13 @@
 #!/usr/bin/env python3
-"""Self-check for acli-rest-get.py: fake opener, fake acli and Keychain, no network.
+"""Self-check for acli-rest-get.py: fake opener, fake acli, temp env file, no network.
 No framework — run directly: python3 test_acli_rest_get.py"""
 import http.client
 import importlib.util
 import io
 import json
+import os
 import sys
+import tempfile
 import urllib.error
 import urllib.parse
 import urllib.request
@@ -64,25 +66,29 @@ def standard_routes(extra=()):
     ]
 
 
-def keychain_ok(*_):
-    return SimpleNamespace(returncode=0, stdout=TOKEN + "\n")
+ENV_OK = f"# read-only token\nACLI_REST_READ_SITE={HOST}\nACLI_REST_READ_EMAIL={EMAIL}\nACLI_REST_READ_TOKEN={TOKEN}\n"
 
 
-def keychain_missing(*_):
-    return SimpleNamespace(returncode=44, stdout="")
+def write_env(text, mode=0o600):
+    path = Path(tempfile.mkdtemp()) / "atlassian.env"
+    path.write_text(text)
+    os.chmod(path, mode)
+    return path
 
 
-def run_main(argv, routes, keychain=keychain_ok, acli=lambda: ACLI_OK):
+def run_main(argv, routes, env=ENV_OK, acli=lambda: ACLI_OK, mode=0o600):
+    env_file = write_env(env, mode) if env is not None else Path(tempfile.mkdtemp()) / "missing.env"
     op = FakeOpener(routes)
     op.argvs = []
 
     def run(cmd):
         op.argvs.append(cmd)
-        return acli() if cmd[0] == "acli" else keychain()
+        assert cmd[0] == "acli", f"unexpected subprocess: {cmd}"
+        return acli()
 
     out, err = io.StringIO(), io.StringIO()
     with redirect_stdout(out), redirect_stderr(err):
-        code = rg.main(["acli-rest-get.py", *argv], opener=op, run=run)
+        code = rg.main(["acli-rest-get.py", *argv], opener=op, run=run, env_file=env_file)
     return code, out.getvalue(), err.getvalue(), op
 
 
@@ -176,11 +182,51 @@ def test_target_line_names_host_cloud_id_and_email():
     assert f"target: {HOST} ({CID}) as {EMAIL}" in err
 
 
-def test_missing_keychain_item_names_service_and_account():
-    code, _, err, op = run_main(["find-user", "x"], standard_routes(), keychain=keychain_missing)
-    assert code == 1
-    assert f"acli-rest-read:{HOST}" in err and EMAIL in err
-    assert not any(r.get_header("Authorization") for r in op.calls)
+def test_missing_env_file_is_fatal_names_the_path_and_makes_no_request():
+    code, _, err, op = run_main(["find-user", "x"], standard_routes(), env=None)
+    assert code == 1 and "missing.env" in err and "not found" in err
+    assert op.calls == []
+
+
+def test_env_file_for_another_site_is_refused_before_any_request():
+    other = ENV_OK.replace(HOST, "other-site.atlassian.net")
+    code, _, err, op = run_main(["find-user", "x"], standard_routes(), env=other)
+    assert code == 1 and "ACLI_REST_READ_SITE" in err
+    assert op.calls == []
+
+
+def test_env_file_for_another_account_is_refused_before_any_request():
+    code, _, err, op = run_main(["find-user", "x"], standard_routes(), env=ENV_OK.replace(EMAIL, "b@example.com"))
+    assert code == 1 and "ACLI_REST_READ_EMAIL" in err
+    assert op.calls == []
+
+
+def test_env_file_without_a_token_is_fatal():
+    no_token = "\n".join(l for l in ENV_OK.splitlines() if "TOKEN" not in l)
+    code, _, err, op = run_main(["find-user", "x"], standard_routes(), env=no_token)
+    assert code == 1 and "ACLI_REST_READ_TOKEN" in err and op.calls == []
+
+
+def test_env_file_readable_by_group_or_others_is_refused():
+    for mode in (0o644, 0o640, 0o604):
+        code, _, err, op = run_main(["find-user", "x"], standard_routes(), mode=mode)
+        assert code == 1 and "chmod 600" in err, oct(mode)
+        assert op.calls == []
+
+
+def test_env_values_may_be_quoted_and_exported():
+    quoted = f'export ACLI_REST_READ_SITE="{HOST}"\nACLI_REST_READ_EMAIL=\'{EMAIL}\'\nACLI_REST_READ_TOKEN="{TOKEN}"\n'
+    seen = []
+
+    def route(req):
+        seen.append(req)
+        return "[]"
+
+    code, _, err, _ = run_main(["find-user", "x"], standard_routes(
+        [(f"{JIRA}/rest/api/3/user/search", route)]), env=quoted)
+    assert code == 0, err
+    import base64
+    assert base64.b64decode(seen[0].get_header("Authorization").split(" ", 1)[1]).decode() == f"{EMAIL}:{TOKEN}"
 
 
 def test_no_site_override_flag_exists():
@@ -334,11 +380,10 @@ def test_token_never_reaches_output_on_an_error_path():
     assert TOKEN not in out and TOKEN not in err
 
 
-def test_keychain_is_asked_for_the_site_service_and_the_email_account():
+def test_only_acli_is_spawned_and_never_the_keychain_tool():
     _, _, _, op = run_main(["find-user", "x"], standard_routes(
         [(f"{JIRA}/rest/api/3/user/search", lambda r: "[]")]))
-    sec = [a for a in op.argvs if a[0] == "security"]
-    assert sec == [["security", "find-generic-password", "-s", f"acli-rest-read:{HOST}", "-a", EMAIL, "-w"]], sec
+    assert op.argvs == [["acli", "jira", "auth", "status"]], op.argvs
 
 
 def test_token_is_never_passed_in_any_subprocess_argv():
@@ -362,7 +407,7 @@ def test_issue_type_id_that_is_not_digits_is_rejected_before_any_request():
         assert op.calls == [], bad
 
 
-def test_bad_arguments_do_no_acli_keychain_or_network_work():
+def test_bad_arguments_do_no_acli_env_file_or_network_work():
     for argv in (["set-parent", "DEMO-1"], ["transitions"], ["transitions", "bad key"], ["createmeta", "demo"]):
         code, _, err, op = run_main(argv, standard_routes())
         assert code == 1 and "FATAL" in err, argv
@@ -387,7 +432,8 @@ def test_missing_acli_binary_is_fatal_without_a_traceback():
     op = FakeOpener([])
     err = io.StringIO()
     with redirect_stdout(io.StringIO()), redirect_stderr(err):
-        code = rg.main(["acli-rest-get.py", "find-user", "x"], opener=op, run=lambda cmd: rg.run_command(cmd, spawn=boom))
+        code = rg.main(["acli-rest-get.py", "find-user", "x"], opener=op, run=lambda cmd: rg.run_command(cmd, spawn=boom),
+                       env_file=write_env(ENV_OK))
     assert code == 1 and "FATAL" in err.getvalue() and "not found" in err.getvalue()
 
 
