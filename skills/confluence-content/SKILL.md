@@ -96,7 +96,7 @@ Show resolved metadata (site, space, parent, title) + rendered Thai content as a
 
 ## Step 5 — Create
 
-> **Status, 2026-11-19:** no Atlassian MCP tools are available here, and page create/update has no acli path. Stop and tell the user; do not create or update a page.
+> **Status, 2026-11-19:** no Atlassian MCP tools are available here. Page create/update goes through `acli-rest-write.py` `page-create` / `page-fetch` + `page-update` (GET-only `page-fetch` snapshots the page as ADF into `page-<id>-v<N>.{adf,base}.json`; `page-update` refuses an edit from a stale base and any edit that drops macro/panel/table etc. nodes without `--allow-node-loss`; `apply` sends and reads back). Draft with plan, show the preview, and wait for the operator's explicit `apply <file> --confirm <hash>`. **First live write is currently blocked by missing site permissions, so say that and stop after the preview.**
 
 ```
 mcp__plugin_atlassian_atlassian__createConfluenceContent (v1: `createConfluencePage`)
