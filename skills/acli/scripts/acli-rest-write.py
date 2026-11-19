@@ -89,7 +89,7 @@ def _conf_paged(get, path, params):
             raise Fatal(f"the next link of {path} has no cursor")
 
 
-def _validate_page_create(flags):
+def _validate_page_create(flags, pos=()):
     if not SPACE_KEY_RE.match(str(flags.get("space", ""))):
         raise Fatal("--space must be an uppercase space key")
     if not str(flags.get("title", "")):
@@ -203,6 +203,10 @@ def resolve_target(opener, run, flags, env_file, product):
     return label, target, env[token_key], get, base_url
 
 
+def _notes(args, flags):
+    return []
+
+
 def write_request(payload):
     d = tempfile.mkdtemp(prefix="acli-rest-write-")  # mode 0o700 per mkdtemp(3)
     p = pathlib.Path(d) / "request.json"
@@ -220,9 +224,14 @@ def do_plan(opener, run, env_file, flags, pos):
     if op is None:
         raise Fatal(f"unknown operation: {pos[0]!r} (registered: none in phase 1)" if not OPERATIONS
                     else f"unknown operation: {pos[0]!r} (registered: {', '.join(sorted(OPERATIONS))})")
-    args = op["validate"]({k: v for k, v in flags.items() if k != "env-file"})
+    args = op["validate"]({k: v for k, v in flags.items() if k != "env-file"}, pos[1:])
     label, target, token, get, _ = resolve_target(opener, run, flags, env_file, op["product"])
     base, body = op["plan"](get, args)
+    if op.get("planOnly"):
+        print(json.dumps({"base": base, "body": body}, ensure_ascii=False))
+        return 0
+    for note in (op.get("notes") or _notes)(args, flags):
+        print(f"note: {note}")
     body_text = canonical(body)
     payload = {"schema": 1, "created": datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
                "operation": pos[0], "args": args, "target": target, "base": base, "body_text": body_text}
@@ -277,7 +286,9 @@ def do_apply(opener, run, env_file, flags, pos):
         raise Fatal(f"the request file is older than 30 minutes (created {data['created']}); plan again")
     if not isinstance(data["args"], dict) or not isinstance(data["target"], dict):
         raise Fatal("the request file has the wrong shapes in args/target")
-    args = op["validate"](data["args"])
+    if op.get("planOnly"):
+        raise Fatal(f"{data['operation']} is read-only; there is nothing to apply")
+    args = op["validate"](data["args"], ())
     label, target, token, get, send_base = resolve_target(opener, run, flags, env_file, op["product"])
     if data["target"].get("host") != target["host"] or data["target"].get("email") != target["email"]:
         raise Fatal("the target changed since the plan; plan again")
@@ -328,7 +339,7 @@ def _names(rows):
     return {str(r.get("name")) for r in rows if isinstance(r, dict)}
 
 
-def _validate_issue_set(flags):
+def _validate_issue_set(flags, pos=()):
     args = dict(flags)
     if "key" not in args or not KEY_RE.match(str(args["key"])):
         raise Fatal("--key must be a Jira issue key")
@@ -421,7 +432,7 @@ def _readback_issue_set(get, args, base, body_text, result):
 
 # --- operation: version-create (Jira) ---------------------------------------
 
-def _validate_version_create(flags):
+def _validate_version_create(flags, pos=()):
     if not re.match(r"^[A-Z][A-Z0-9_]+$", str(flags.get("project", ""))):
         raise Fatal("--project must be a Jira project key")
     if not str(flags.get("name", "")):
@@ -467,6 +478,134 @@ OPERATIONS["version-create"] = {"product": "jira", "validate": _validate_version
 
 
 
+# --- operations: page-fetch and page-update (Confluence v2, phase 4) --------
+
+PRESERVE_TYPES = ("extension", "bodiedExtension", "inlineExtension", "panel", "expand",
+                  "nestedExpand", "table", "media", "mediaSingle", "mediaGroup", "layoutSection",
+                  "taskList", "decisionList", "status", "mention", "inlineCard", "blockCard")
+
+
+def _node_counts(adf):
+    counts = {}
+
+    def walk(node):
+        if not isinstance(node, dict):
+            return
+        t = node.get("type")
+        if isinstance(t, str):
+            counts[t] = counts.get(t, 0) + 1
+        for child in (node.get("content") or []):
+            walk(child)
+
+    walk(adf)
+    return counts
+
+
+def _page_snapshot(get, page_id):
+    page = get(f"/pages/{page_id}", {"body-format": "atlas_doc_format"})
+    val = (page.get("body", {}) or {}).get("atlas_doc_format", {}).get("value", "")
+    try:
+        adf = json.loads(val)
+    except ValueError:
+        raise Fatal(f"page {page_id} did not return an ADF body") from None
+    version = (page.get("version") or {}).get("number")
+    if not isinstance(version, int):
+        raise Fatal(f"page {page_id} did not expose a version number")
+    return page, adf, version
+
+
+def _validate_page_fetch(flags, pos):
+    if len(pos) != 1 or not PAGE_ID_RE.match(str(pos[0])):
+        raise Fatal("usage: page-fetch <page id>")
+    return {"page": str(pos[0])}
+
+
+def _plan_page_fetch(get, args):
+    page, adf, version = _page_snapshot(get, args["page"])
+    d = pathlib.Path.cwd()
+    adf_path = d / f"page-{args['page']}-v{version}.adf.json"
+    base_path = d / f"page-{args['page']}-v{version}.base.json"
+    adf_path.write_text(json.dumps(adf, indent=2, ensure_ascii=False))
+    base = {"pageId": str(page.get("id")), "version": version, "title": page.get("title", ""),
+            "adfSha": hashlib.sha256(canonical(adf).encode()).hexdigest()}
+    base_path.write_text(json.dumps(base))
+    return base, {"base": str(base_path), "adf": str(adf_path)}
+
+
+def _validate_page_update(flags, pos):
+    if "base" not in flags:
+        raise Fatal("usage: page-update --base <*.base.json> --body-adf <edited.adf.json> [--title T] [--allow-node-loss TYPE]")
+    if "body-adf" not in flags:
+        raise Fatal("--body-adf is required")
+    allow = flags.get("allow-node-loss", [])
+    allow = [allow] if isinstance(allow, str) else list(allow)
+    unknown = [a for a in allow if a not in PRESERVE_TYPES]
+    if unknown:
+        raise Fatal(f"--allow-node-loss must name node types it may lose, not {unknown}")
+    args = {"base": str(flags["base"]), "body-adf": str(flags["body-adf"]), "allowNodeLoss": allow}
+    if "title" in flags:
+        args["title"] = str(flags["title"])
+    return args
+
+
+def _plan_page_update(get, args):
+    base_file = pathlib.Path(args["base"])
+    try:
+        base = json.loads(base_file.read_text())
+    except FileNotFoundError:
+        raise Fatal(f"base file {base_file} not found (run page-fetch first)") from None
+    except ValueError:
+        raise Fatal(f"base file {base_file} is not JSON") from None
+    if not isinstance(base, dict) or base.get("adfSha") is None or base.get("pageId") is None:
+        raise Fatal(f"base file {base_file} does not hold pageId/version/title/adfSha")
+    page, adf, version = _page_snapshot(get, str(base["pageId"]))
+    if version != base.get("version") or hashlib.sha256(canonical(adf).encode()).hexdigest() != base["adfSha"]:
+        raise Fatal(f"the live page no longer matches the base {(base_file.name)!r} "
+                    f"(live version {version}); re-run page-fetch and re-check edits")
+    edited = _read_adf(args["body-adf"])
+    live_counts, edited_counts = _node_counts(adf), _node_counts(edited)
+    dropped = [t for t in PRESERVE_TYPES if live_counts.get(t, 0) > edited_counts.get(t, 0)
+               and t not in set(args["allowNodeLoss"])]
+    if dropped:
+        raise Fatal(f"the edit removes these node types: {dropped}; "
+                    f"pass --allow-node-loss <type> only for types you mean to drop")
+    title = args.get("title", str(base.get("title", "")))
+    wire = {"id": str(base["pageId"]), "status": "current", "title": title,
+            "version": {"number": version + 1},
+            "body": {"representation": "atlas_doc_format", "value": canonical(edited)}}
+    return {"pageId": str(base["pageId"]), "version": version, "title": title,
+            "adfSha": base["adfSha"]}, wire
+
+
+def _send_page_update(http, args, base, body_text):
+    return http("PUT", f"/pages/{base['pageId']}", body_text.encode())
+
+
+def _readback_page_update(get, args, base, body_text, result):
+    page, adf, version = _page_snapshot(get, base["pageId"])
+    wire = json.loads(body_text)
+    return page.get("title") == wire["title"] and version == wire["version"]["number"] \
+        and canonical(adf) == canonical(json.loads(wire["body"]["value"]))
+
+
+def _notes_page_update(args, flags):
+    allow = args.get("allowNodeLoss") or []
+    notes = [f"publishing can discard or conflict with an unpublished draft of this page; check the "
+             f"page for a draft first"]
+    if allow:
+        notes.append(f"--allow-node-loss {' and '.join(allow)}: those node types are dropped by design")
+    return notes
+
+
+
+OPERATIONS["page-fetch"] = {"product": "confluence", "planOnly": True,
+                            "validate": _validate_page_fetch, "plan": _plan_page_fetch}
+OPERATIONS["page-update"] = {"product": "confluence", "validate": _validate_page_update,
+                             "plan": _plan_page_update, "send": _send_page_update,
+                             "readback": _readback_page_update, "notes": _notes_page_update}
+
+
+
 def main(argv, opener=None, run=run_command, env_file=ENV_FILE):
     try:
         if len(argv) < 2:
@@ -477,6 +616,13 @@ def main(argv, opener=None, run=run_command, env_file=ENV_FILE):
             return do_plan(opener or default_opener(), run, env_file, flags, pos)
         if mode == "apply":
             return do_apply(opener or default_opener(), run, env_file, flags, pos)
+        if mode == "page-fetch":
+            op = OPERATIONS["page-fetch"]
+            args = op["validate"](flags, pos)
+            _, _, _, get, _ = resolve_target(opener or default_opener(), run, flags, env_file, op["product"])
+            base, body = op["plan"](get, args)
+            print(json.dumps({"base": base, "body": body}, ensure_ascii=False))
+            return 0
         raise Fatal(USAGE)
     except Fatal as e:
         print(f"FATAL: {e}", file=sys.stderr)

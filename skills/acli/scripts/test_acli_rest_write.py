@@ -76,10 +76,10 @@ def tenant_route():
 
 
 # A test-only operation. The real registry is empty in phase 1.
-def fake_validate(args):
-    if set(args) != {"key"} or not re.match(r"^[A-Z]+-[0-9]+$", str(args["key"])):
+def fake_validate(flags, pos=()):
+    if set(flags) != {"key"} or not re.match(r"^[A-Z]+-[0-9]+$", str(flags["key"])):
         raise rw.Fatal("fake-set takes exactly --key ISSUE")
-    return args
+    return flags
 
 
 def fake_plan(get, args):
@@ -383,11 +383,13 @@ def test_tokens_never_reach_stdout_or_stderr_on_error_paths():
 
 
 def test_registered_operations_match_the_plan_phases_so_far():
-    assert sorted(rw.OPERATIONS) == ["issue-set", "page-create", "version-create"], sorted(rw.OPERATIONS)
+    assert sorted(rw.OPERATIONS) == ["issue-set", "page-create", "page-fetch", "page-update", "version-create"], sorted(rw.OPERATIONS)
     for name, op in rw.OPERATIONS.items():
-        assert set(op) >= {"product", "validate", "plan", "send", "readback"}, (name, sorted(op))
+        expected = {"product", "validate", "plan", "send", "readback"} if name != "page-fetch" else {"planOnly", "product", "validate", "plan"}
+        assert set(op) >= expected, (name, sorted(op))
     for name, op in rw.OPERATIONS.items():
-        assert set(op) >= {"product", "validate", "plan", "send", "readback"}, (name, sorted(op))
+        expected = {"product", "validate", "plan", "send", "readback"} if name != "page-fetch" else {"planOnly", "product", "validate", "plan"}
+        assert set(op) >= expected, (name, sorted(op))
 
 
 def test_the_write_script_source_has_one_request_builder_and_no_flags_for_tokens():
@@ -703,6 +705,174 @@ def test_version_create_apply_posts_and_verifies_by_id():
     assert code == 0, err2
     assert state["posted_version"] == {"projectId": "10001", "name": "3.0"}
     assert not path.exists()
+
+
+# --- page-fetch and page-update (phase 4) -----------------------------------
+
+V2_PAGE = {"id": "555", "status": "current", "title": "Demo page", "version": {"number": 7},
+           "spaceId": "123",
+           "body": {"atlas_doc_format": {"representation": "atlas_doc_format", "value": json.dumps(ADF)}}}
+MACRO_ADF = {"type": "doc", "version": 1, "content": [
+    {"type": "paragraph", "content": [{"type": "text", "text": "hello"}]},
+    {"type": "extension", "content": [], "attrs": {"id": "m1", "name": "Mermaid diagram"}}]}
+LIVE_PAGE = dict(V2_PAGE, body={"atlas_doc_format": {"representation": "atlas_doc_format", "value": json.dumps(MACRO_ADF)}})
+EDITED_DROP_MACRO = {"type": "doc", "version": 1,
+                     "content": [{"type": "paragraph", "content": [{"type": "text", "text": "hello"}]}]}
+EDITED_ADD_LINE = {"type": "doc", "version": 1, "content": [
+    {"type": "paragraph", "content": [{"type": "text", "text": "hello"}]},
+    {"type": "extension", "content": [], "attrs": {"id": "m1", "name": "Mermaid diagram"}},
+    {"type": "paragraph", "content": [{"type": "text", "text": "new line"}]}]}
+
+
+def _chdir_tmp():
+    d = Path(tempfile.mkdtemp())
+    old = os.getcwd()
+    os.chdir(d)
+    return d, old
+
+
+def test_page_fetch_writes_adf_and_base_files_and_the_base_holds_the_hash():
+    import hashlib as h
+    d, old = _chdir_tmp()
+    try:
+        code, out, err, op = run(["page-fetch", "555"], [(CONF, lambda req: json.dumps(LIVE_PAGE))] + [tenant_route()],
+                                 env=env_conf())
+    finally:
+        os.chdir(old)
+    assert code == 0, err
+    base = json.loads((d / "page-555-v7.base.json").read_text())
+    adf = json.loads((d / "page-555-v7.adf.json").read_text())
+    assert base["pageId"] == "555" and base["version"] == 7 and base["title"] == "Demo page"
+    assert base["adfSha"] == h.sha256(json.dumps(adf, sort_keys=True, ensure_ascii=False).encode()).hexdigest()
+
+
+def _planned_update(live, edited):
+    d, old = _chdir_tmp()
+    os.chdir(old)  # page-fetch files land in tmp; paths stay absolute for --base/--body-adf
+    d2, old2 = _chdir_tmp()
+    try:
+        run(["page-fetch", "555"], [(CONF, lambda req: json.dumps(live))] + [tenant_route()], env=env_conf())
+        base_abs = d2 / "page-555-v7.base.json"
+        edited_path = adf_file(edited)
+        os.chdir(old2)
+        return d2, base_abs, edited_path, old2
+    finally:
+        pass
+
+
+def test_page_update_plan_shows_the_diff_and_a_confirm_when_the_base_matches():
+    d2, base_abs, edited_path, old2 = _planned_update(LIVE_PAGE, EDITED_ADD_LINE)
+    try:
+        code, out, err, op = run(["plan", "page-update", "--base", str(base_abs), "--body-adf", str(edited_path)],
+                                 [(CONF, lambda req: json.dumps(LIVE_PAGE))] + [tenant_route()], env=env_conf())
+        assert code == 0, err
+        assert "confirm:" in out and "draft" in out.lower()
+        assert "new line" in out
+        data = json.loads(request_path(out).read_text())
+        wire = json.loads(data["body_text"])
+        assert wire["version"]["number"] == 8
+        assert json.loads(wire["body"]["value"]) == EDITED_ADD_LINE
+    finally:
+        os.chdir(old2)
+
+
+def test_page_update_refuses_a_stale_base_version():
+    d2, base_abs, edited_path, old2 = _planned_update(LIVE_PAGE, EDITED_ADD_LINE)
+    stale = dict(V2_PAGE, version={"number": 8})
+    try:
+        code, out, err, op = run(["plan", "page-update", "--base", str(base_abs), "--body-adf", str(edited_path)],
+                                 [(CONF, lambda req: json.dumps(stale))] + [tenant_route()], env=env_conf())
+        assert code == 1 and "no longer matches" in err
+        assert not any(r.get_method() == "PUT" for r in op.calls)
+    finally:
+        os.chdir(old2)
+
+
+def test_page_update_refuses_a_changed_adf_at_the_same_version():
+    d2, base_abs, edited_path, old2 = _planned_update(LIVE_PAGE, EDITED_ADD_LINE)
+    changed = json.loads(json.dumps(LIVE_PAGE))
+    changed["body"]["atlas_doc_format"]["value"] = json.dumps(ADF)  # different ADF, same version
+    try:
+        code, out, err, op = run(["plan", "page-update", "--base", str(base_abs), "--body-adf", str(edited_path)],
+                                 [(CONF, lambda req: json.dumps(changed))] + [tenant_route()], env=env_conf())
+        assert code == 1 and "no longer matches" in err
+    finally:
+        os.chdir(old2)
+
+
+def test_page_update_refuses_node_loss_and_allows_it_per_type():
+    d2, base_abs, edited_path, old2 = _planned_update(LIVE_PAGE, EDITED_DROP_MACRO)
+    try:
+        code, out, err, op = run(["plan", "page-update", "--base", str(base_abs), "--body-adf", str(edited_path)],
+                                 [(CONF, lambda req: json.dumps(LIVE_PAGE))] + [tenant_route()], env=env_conf())
+        assert code == 1 and "extension" in err and "allow-node-loss" in err
+        code, out, err, op = run(["plan", "page-update", "--base", str(base_abs), "--body-adf", str(edited_path),
+                                  "--allow-node-loss", "extension"],
+                                 [(CONF, lambda req: json.dumps(LIVE_PAGE))] + [tenant_route()], env=env_conf())
+        assert code == 0, err
+        assert "extension" in out and "allow-node-loss" in out
+    finally:
+        os.chdir(old2)
+
+
+def test_page_update_apply_sends_version_plus_one_and_verifies_by_read_back():
+    d2, base_abs, edited_path, old2 = _planned_update(LIVE_PAGE, EDITED_ADD_LINE)
+    try:
+        code, out, err, _ = run(["plan", "page-update", "--base", str(base_abs), "--body-adf", str(edited_path)],
+                                [(CONF, lambda req: json.dumps(LIVE_PAGE))] + [tenant_route()], env=env_conf())
+        path, conf = request_path(out), confirm_of(out)
+        state = {"page": LIVE_PAGE}
+
+        def route(req):
+            if req.get_method() == "GET":
+                return json.dumps(state["page"])
+            assert req.get_method() == "PUT"
+            state["put"] = json.loads(req.data.decode())
+            state["page"] = dict(LIVE_PAGE, version={"number": 8},
+                                 body={"atlas_doc_format": {"representation": "atlas_doc_format",
+                                                            "value": json.dumps(EDITED_ADD_LINE)}})
+            return json.dumps(state["page"])
+
+        code, out2, err2, op2 = run(["apply", str(path), "--confirm", conf],
+                                    [(CONF, route)] + [tenant_route()], env=env_conf())
+        assert code == 0, err2
+        assert state["put"]["version"]["number"] == 8
+        assert json.loads(state["put"]["body"]["value"]) == EDITED_ADD_LINE
+        assert not path.exists()
+    finally:
+        os.chdir(old2)
+
+
+def test_page_update_read_back_that_differs_is_exit_3():
+    d2, base_abs, edited_path, old2 = _planned_update(LIVE_PAGE, EDITED_ADD_LINE)
+    try:
+        code, out, err, _ = run(["plan", "page-update", "--base", str(base_abs), "--body-adf", str(edited_path)],
+                                [(CONF, lambda req: json.dumps(LIVE_PAGE))] + [tenant_route()], env=env_conf())
+        path, conf = request_path(out), confirm_of(out)
+
+        def route(req):
+            if(req.get_method() == "PUT"):
+                return json.dumps(dict(LIVE_PAGE, version={"number": 8}))
+            return json.dumps(LIVE_PAGE)  # read-back still the old body
+
+        code, out2, err2, op2 = run(["apply", str(path), "--confirm", conf],
+                                    [(CONF, route)] + [tenant_route()], env=env_conf())
+        assert code == 3 and "read-back" in err2
+        assert path.exists()
+    finally:
+        os.chdir(old2)
+
+
+def test_page_fetch_never_applies():
+    req = json.dumps({"schema": 1, "created": datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
+                      "operation": "page-fetch", "args": {"page": "555"},
+                      "target": {"host": HOST, "cloudId": CID, "email": EMAIL}, "base": {}, "body_text": "{}\n"})
+    path = Path(tempfile.mkdtemp()) / "request.json"
+    path.write_text(req)
+    digest = hashlib.sha256(path.read_bytes()).hexdigest()[:12]
+    code, out, err, op = run(["apply", str(path), "--confirm", digest],
+                             [(CONF, lambda r: json.dumps(LIVE_PAGE))] + [tenant_route()], env=env_conf())
+    assert code == 1 and "read-only" in err
 
 
 if __name__ == "__main__":

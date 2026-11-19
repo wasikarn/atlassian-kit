@@ -8,6 +8,19 @@ Pre-`1.0.0`: breaking changes may land in any `0.x` release.
 This file starts at `0.1.18` — releases before that predate the changelog. See
 `git log` for the full history back to `0.1.0`.
 
+## [0.1.65] — 2026-11-19
+**`acli-rest-write.py` phase 4: `page-fetch` and `page-update`.** `page-fetch` (top-level command,
+read-only) writes `page-<id>-v<N>.adf.json` and `page-<id>-v<N>.base.json` (pageId, version, title,
+sha256 of the canonical ADF) beside the caller. `page-update` plans from the base file: the live page
+must still match the base version AND ADF hash; the edit must not drop preserved node types
+(macro/panel/table media/layout/task types — `--allow-node-loss TYPE` is the per-type override and the
+preview notes it); the preview warns about unpublished drafts. `apply` sends `PUT /pages/{id}` with
+`version.number = base + 1` and verifies by re-reading the page: title, version and the ADF compared
+structurally — a mismatch is exit 3 (sent but unverified). An apply on a read-only operation is a
+usage error. All operations now take `(flags, positionals)` in `validate`. 55 tests. Live writes are
+still blocked by site permissions (the operator is tracking that with the site admin), so every
+operation's first fire-on-real-API remains pending.
+
 ## [0.1.64] — 2026-11-19
 **`acli-rest-write.py` phase 3: the Jira operations.** `issue-set` (flags `--priority`,
 `--parent`, `--environment-adf`, `--add-fix-version`, `--remove-fix-version`,
