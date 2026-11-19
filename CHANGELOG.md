@@ -8,6 +8,14 @@ Pre-`1.0.0`: breaking changes may land in any `0.x` release.
 This file starts at `0.1.18` — releases before that predate the changelog. See
 `git log` for the full history back to `0.1.0`.
 
+## [0.1.60] — 2026-11-19
+**`acli-rest-get.py` runs against a live site; the skill now names it.** The first live run with a
+scoped token (`read:jira-work`, `read:jira-user`) passed for `transitions` and `find-user` and failed
+for `createmeta`: Jira returns `issueTypes` or `fields` with `total`, not `values` with `isLast`.
+`createmeta` now pages on `total` and both calls were re-run live. The three read rows in "When acli
+can't" (`acli/SKILL.md`) name the script, with the `find-user` limits and the Keychain item it needs.
+The handoff note that started this work is gone.
+
 ## [0.1.59] — 2026-11-19
 **Review fixes for `acli-rest-get.py`.** A two-axis review of 0.1.58 found gaps. The optional issue
 type id of `createmeta` went into the URL path unchecked; it must now be digits. A response that is

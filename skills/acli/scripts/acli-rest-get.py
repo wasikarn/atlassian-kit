@@ -13,8 +13,7 @@ find-user is a best-effort search with two limits: it returns one page of at mos
 Jira searches at most 1,000 users, so an empty result is not proof the user does not exist (a
 caller without permission also gets an empty list).
 
-Unverified until the first live call: the response key "values" for createmeta, and the
-tenant_info endpoint used to resolve the cloudId.
+Checked against a live site on 2026-11-19 with a scoped token (read:jira-work, read:jira-user).
 """
 import base64
 import json
@@ -153,20 +152,20 @@ def find_user(jira_get, query):
 
 
 def createmeta(jira_get, project, issuetype=None):
-    path = f"/rest/api/3/issue/createmeta/{project}/issuetypes"
+    path, items_key = f"/rest/api/3/issue/createmeta/{project}/issuetypes", "issueTypes"
     if issuetype is not None:
-        path += f"/{issuetype}"
+        path, items_key = f"{path}/{issuetype}", "fields"
     out = []
     while True:
         page = jira_get(path, {"startAt": len(out), "maxResults": 50})
-        values, is_last = page.get("values"), page.get("isLast")
-        if not isinstance(values, list) or not isinstance(is_last, bool):
-            raise Fatal("unexpected createmeta shape (need values[] and isLast)")
-        if not values and not is_last:
-            raise Fatal("createmeta returned an empty page before the last one")
-        out.extend(values)
-        if is_last:
+        items, total = page.get(items_key), page.get("total")
+        if not isinstance(items, list) or not isinstance(total, int):
+            raise Fatal(f"unexpected createmeta shape (need {items_key}[] and total)")
+        out.extend(items)
+        if len(out) >= total:
             return out
+        if not items:
+            raise Fatal("createmeta returned an empty page before reaching total")
 
 
 def parse_args(args):

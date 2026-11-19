@@ -230,12 +230,13 @@ def test_find_user_returns_only_account_fields_not_email():
 
 # --- createmeta: pagination --------------------------------------------------
 
-def test_createmeta_follows_pages_until_is_last():
+def test_createmeta_follows_pages_until_total_is_reached():
     def route(req):
         start = int(urllib.parse.parse_qs(urllib.parse.urlsplit(req.full_url).query)["startAt"][0])
         if start == 0:
-            return json.dumps({"values": [{"id": "1"}, {"id": "2"}], "isLast": False})
-        return json.dumps({"values": [{"id": "3"}], "isLast": True})
+            return json.dumps({"startAt": 0, "maxResults": 2, "total": 3, "issueTypes": [{"id": "1"}, {"id": "2"}]})
+        assert start == 2, start
+        return json.dumps({"startAt": 2, "maxResults": 2, "total": 3, "issueTypes": [{"id": "3"}]})
 
     code, out, err, _ = run_main(["createmeta", "DEMO"], standard_routes(
         [(f"{JIRA}/rest/api/3/issue/createmeta/DEMO/issuetypes", route)]))
@@ -243,17 +244,25 @@ def test_createmeta_follows_pages_until_is_last():
     assert [v["id"] for v in json.loads(out)] == ["1", "2", "3"]
 
 
-def test_createmeta_missing_is_last_is_fatal_not_silently_short():
+def test_createmeta_without_a_total_is_fatal_not_silently_short():
     code, out, err, _ = run_main(["createmeta", "DEMO"], standard_routes(
         [(f"{JIRA}/rest/api/3/issue/createmeta/DEMO/issuetypes",
-          lambda r: json.dumps({"values": [{"id": "1"}]}))]))
-    assert code == 1 and "isLast" in err and out == ""
+          lambda r: json.dumps({"issueTypes": [{"id": "1"}]}))]))
+    assert code == 1 and "total" in err and out == ""
+
+
+def test_createmeta_empty_page_before_total_is_fatal_not_an_endless_loop():
+    code, out, err, op = run_main(["createmeta", "DEMO"], standard_routes(
+        [(f"{JIRA}/rest/api/3/issue/createmeta/DEMO/issuetypes",
+          lambda r: json.dumps({"total": 5, "issueTypes": []}))]))
+    assert code == 1 and "empty page" in err and out == ""
+    assert len([c for c in op.calls if "/createmeta/" in c.full_url]) == 1
 
 
 def test_createmeta_with_issue_type_hits_the_fields_path():
     code, out, err, op = run_main(["createmeta", "DEMO", "10004"], standard_routes(
         [(f"{JIRA}/rest/api/3/issue/createmeta/DEMO/issuetypes/10004",
-          lambda r: json.dumps({"values": [{"fieldId": "priority"}], "isLast": True}))]))
+          lambda r: json.dumps({"startAt": 0, "maxResults": 50, "total": 1, "fields": [{"fieldId": "priority"}]}))]))
     assert code == 0, err
     assert json.loads(out) == [{"fieldId": "priority"}]
 
