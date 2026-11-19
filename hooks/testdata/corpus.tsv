@@ -97,3 +97,4 @@ deny	not-acli-program	echo jira view acli
 deny	rest-write-plan	python3 skills/acli/scripts/acli-rest-write.py plan issue-set --key APPR-1 --priority High
 deny	rest-write-apply	python3 acli-rest-write.py apply request.json --confirm abcdef123456
 allow	rest-get-read	python3 skills/acli/scripts/acli-rest-get.py transitions APPR-1
+deny	over-block-rg-mention-rest-write	rg -n "rest" skills/acli/scripts/acli-rest-write.py
