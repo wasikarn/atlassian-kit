@@ -87,7 +87,7 @@ def fake_plan(get, args):
     return {"summary": cur["summary"]}, {"fields": {"summary": "NEW"}}
 
 
-def fake_send(http, args, body_text):
+def fake_send(http, args, base, body_text):
     return http("PUT", f"/rest/api/3/issue/{args['key']}", body_text.encode())  # returns the response text
 
 
@@ -382,14 +382,170 @@ def test_tokens_never_reach_stdout_or_stderr_on_error_paths():
     assert WTOKEN not in out + err and RTOKEN not in out + err
 
 
-def test_no_registered_operation_ships_in_phase_one():
-    assert rw.OPERATIONS == {}, "phase 1 registers no write operation"
+def test_only_page_create_is_registered():
+    assert sorted(rw.OPERATIONS) == ["page-create"], sorted(rw.OPERATIONS)
+    for name, op in rw.OPERATIONS.items():
+        assert set(op) >= {"product", "validate", "plan", "send", "readback"}, (name, sorted(op))
 
 
 def test_the_write_script_source_has_one_request_builder_and_no_flags_for_tokens():
     src = (HERE / "acli-rest-write.py").read_text()
     assert "--token" not in src and "--site" not in src
     assert "os.environ" not in src, "tokens come from the env file, never the environment"
+
+
+# --- page-create (phase 2) ---------------------------------------------------
+
+CONF = f"https://api.atlassian.com/ex/confluence/{CID}/wiki/api/v2"
+ADF = {"type": "doc", "version": 1, "content": [{"type": "paragraph", "content": [{"type": "text", "text": "hello"}]}]}
+SPACE_ID = "123"
+PARENT = "999"
+
+
+def adf_file(doc=ADF):
+    path = Path(tempfile.mkdtemp()) / "body.adf.json"
+    path.write_text(json.dumps(doc))
+    return path
+
+
+def conf_routes(space_results=None, title_results=None, parent_space=None, created=None, readback_adf=None, state=None):
+    state = state if state is not None else {}
+    """Dispatch by (method, path, query). Returns a route list for the confluence calls."""
+
+    state.update(title_results=title_results, created=created)
+    space_pages = [dict(p) for p in space_results if p["key"] == "DEMO"]
+
+    def routes_for(req):
+        method, url = req.get_method(), req.full_url
+        split, query = urllib.parse.urlsplit(url.split("#")[0]), urllib.parse.parse_qs(urllib.parse.urlsplit(url).query)
+        u = split.path
+        if method == "GET" and u.endswith("/spaces"):
+            cur = query.get("cursor", [""])[0]
+            if cur == "c2" or space_pages:
+                page = space_pages
+                next_ = {}
+            else:
+                page, next_ = [], {"next": "/wiki/api/v2/spaces?cursor=c2"}  # first page empty, wanted on the second
+            return json.dumps({"results": page, "_links": next_})
+        if method == "POST" and u.endswith("/pages"):
+            state["created"] = json.loads(req.data.decode())
+            return json.dumps({"id": "555", "status": "current", "title": state["created"]["title"], "spaceId": SPACE_ID})
+        if method == "GET" and "/pages/" in u:
+            pid = u.rsplit("/", 1)[1].split("?")[0]
+            if pid == PARENT:
+                return json.dumps({"id": PARENT, "spaceId": parent_space or SPACE_ID, "title": "Parent"})
+            if pid == "555":
+                if state["created"] is None:
+                    raise AssertionError("read-back for a page that was never created")
+                val = json.dumps(readback_adf if readback_adf is not None else ADF)
+                return json.dumps({"id": "555", "title": state["created"]["title"],
+                                   "body": {"atlas_doc_format": {"representation": "atlas_doc_format", "value": val}}})
+            raise AssertionError(f"unexpected page id {pid}")
+        if method == "GET" and u.endswith("/pages"):
+            return json.dumps({"results": state["title_results"] if state["title_results"] is not None else [], "_links": {}})
+        raise AssertionError(f"unexpected confluence call {method} {u}")
+
+    return [(CONF, routes_for)]
+
+
+def env_conf():
+    return env_file(ENV_OK)
+
+
+def plan_page(routes):
+    return run(["plan", "page-create", "--space", "DEMO", "--title", "T", "--body-adf", str(adf_file())],
+               routes + [tenant_route()])
+
+
+def test_page_create_plan_finds_the_space_on_the_second_page_and_builds_the_wire():
+    routes = conf_routes(space_results=[{"id": SPACE_ID, "key": "DEMO"}])
+    code, out, err, op = plan_page(routes)
+    assert code == 0, err
+    assert '"spaceId"' not in out.splitlines()[0]
+    assert "ALTERNATE" not in out and f"PRODUCTION {HOST}" in out
+    data = json.loads(request_path(out).read_text())
+    assert json.loads(data["body_text"]) == ADF
+    assert data["target"]["host"] == HOST
+    assert all(r.get_method() == "GET" for r in op.calls)
+
+
+def test_page_create_plan_refuses_a_space_key_with_zero_or_two_matches():
+    code, out, err, op = plan_page(conf_routes(space_results=[{"id": "9", "key": "OTHER"}]))
+    assert code == 1 and "spaces named DEMO" in err and "not proof" in err or "DEMO" in err
+    assert not any(r.get_method() == "POST" for r in op.calls)
+
+
+def test_page_create_plan_refuses_a_duplicate_title():
+    routes = conf_routes(space_results=[{"id": SPACE_ID, "key": "DEMO"}], title_results=[{"id": "42", "title": "T"}])
+    code, out, err, op = plan_page(routes)
+    assert code == 1 and "already" in err
+    assert not any(r.get_method() == "POST" for r in op.calls)
+
+
+def test_page_create_plan_refuses_a_parent_outside_the_space():
+    routes = conf_routes(space_results=[{"id": SPACE_ID, "key": "DEMO"}], parent_space="888")
+    code, out, err, op = run(["plan", "page-create", "--space", "DEMO", "--title", "T",
+                              "--body-adf", str(adf_file()), "--parent", PARENT],
+                             routes + [tenant_route()])
+    assert code == 1 and "parent" in err
+    assert not any(r.get_method() == "POST" for r in op.calls)
+
+
+def test_page_create_plan_refuses_a_body_file_that_is_not_an_adf_doc():
+    notadf = adf_file({"type": "paragraph"})
+    code, out, err, op = run(["plan", "page-create", "--space", "DEMO", "--title", "T", "--body-adf", str(notadf)],
+                             [tenant_route()])
+    assert code == 1 and "not an ADF doc" in err
+    assert op.calls == [] or not any(r.get_method() == "POST" for r in op.calls)
+
+
+def test_page_create_plan_refuses_a_missing_body_file_before_any_request():
+    code, out, err, op = run(["plan", "page-create", "--space", "DEMO", "--title", "T",
+                              "--body-adf", "/nonexistent/x.json"], [tenant_route()])
+    assert code == 1 and "not found" in err
+    assert op.calls == [] or all(r.get_method() == "GET" and "rest/api" not in r.full_url for r in op.calls)
+
+
+def test_page_create_apply_sends_the_wire_body_with_the_adf_embedded_and_verifies():
+    routes = conf_routes(space_results=[{"id": SPACE_ID, "key": "DEMO"}])
+    code, out, err, op = plan_page(routes)
+    assert code == 0, err
+    path, conf = request_path(out), confirm_of(out)
+    state = {}
+    routes2 = conf_routes(space_results=[{"id": SPACE_ID, "key": "DEMO"}], state=state) + [tenant_route()]
+    code, out2, err2, op2 = run(["apply", str(path), "--confirm", conf], routes2, env=env_conf())
+    assert code == 0, err2
+    wire = state["created"]
+    assert wire["spaceId"] == SPACE_ID and wire["status"] == "current" and wire["title"] == "T"
+    assert json.loads(wire["body"]["value"]) == ADF
+    assert wire["body"]["representation"] == "atlas_doc_format"
+    assert not path.exists()
+
+
+def test_page_create_apply_refuses_when_the_title_was_taken_between_plan_and_apply():
+    routes = conf_routes(space_results=[{"id": SPACE_ID, "key": "DEMO"}])
+    code, out, err, op = plan_page(routes)
+    path, conf = request_path(out), confirm_of(out)
+    routes2 = conf_routes(space_results=[{"id": SPACE_ID, "key": "DEMO"}], title_results=[{"id": "42", "title": "T"}]) + [tenant_route()]
+    code, out2, err2, op2 = run(["apply", str(path), "--confirm", conf], routes2, env=env_conf())
+    assert code == 1 and "changed since the plan" in err2
+    assert not any(r.get_method() == "POST" for r in op2.calls)
+
+
+def test_page_create_read_back_that_differs_is_exit_3():
+    routes = conf_routes(space_results=[{"id": SPACE_ID, "key": "DEMO"}])
+    code, out, err, op = plan_page(routes)
+    path, conf = request_path(out), confirm_of(out)
+    changed = {"type": "doc", "version": 1, "content": [{"type": "paragraph", "content": [{"type": "text", "text": "DIFFERENT"}]}]}
+    routes2 = conf_routes(space_results=[{"id": SPACE_ID, "key": "DEMO"}], readback_adf=changed) + [tenant_route()]
+    code, out2, err2, op2 = run(["apply", str(path), "--confirm", conf], routes2, env=env_conf())
+    assert code == 3 and "read-back" in err2
+
+
+def test_page_create_space_lookup_pagination_follows_next():
+    routes = conf_routes(space_results=[{"id": SPACE_ID, "key": "DEMO"}])
+    code, out, err, _ = plan_page(routes)
+    assert code == 0, err
 
 
 if __name__ == "__main__":

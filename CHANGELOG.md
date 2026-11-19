@@ -8,6 +8,17 @@ Pre-`1.0.0`: breaking changes may land in any `0.x` release.
 This file starts at `0.1.18` — releases before that predate the changelog. See
 `git log` for the full history back to `0.1.0`.
 
+## [0.1.63] — 2026-11-19
+**`acli-rest-write.py` phase 2: `page-create` for Confluence v2.** The operation validates args
+(--space key, --title, --body-adf ADF doc, optional --parent page id), plans with GETs only (the
+space by key over `_links.next` pages, a same-title check, the parent must live in the same space;
+"not found" is never proof of absence), and applies a `POST /pages` with
+`body.representation=atlas_doc_format`, then reads the page back by the POSTed id and compares the ADF
+structurally. The send helper takes paths (the base now carries `/wiki/api/v2` for Confluence), and
+`op.send` receives the rebuilt base. 36 tests. First live attempt blocked by site permissions
+(reads pass; every create 404s in two spaces and via acli's space create with a full-rights classic
+token — recorded as an operator/admin matter, not a code gap).
+
 ## [0.1.62] — 2026-11-19
 **Write-script skeleton (plan/apply), no operation registered.** New `acli-rest-write.py` and
 `acli_rest_common.py` (shared with `acli-rest-get.py`, whose behaviour and 42 tests are unchanged). The

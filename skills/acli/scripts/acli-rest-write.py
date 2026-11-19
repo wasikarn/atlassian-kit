@@ -38,7 +38,7 @@ import urllib.parse
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent))
 from acli_rest_common import (  # noqa: E402
     ENV_FILE, HOST_RE, Fatal, HttpError, NetError, acli_identity, cloud_id, default_opener,
-    http_request, read_env_file, run_command,
+    http_request, parse_json, read_env_file, run_command,
 )
 
 PRODUCT_BASE = {"jira": f"https://api.atlassian.com/ex/jira",
@@ -48,7 +48,106 @@ FILE_KEYS = {"schema", "created", "operation", "args", "target", "base", "body_t
 USAGE = ("usage: acli-rest-write.py plan <operation> [--... VALUE] [--env-file FILE] | "
          "apply <request-file> --confirm <12hex> [--env-file FILE]")
 
-OPERATIONS = {}  # name -> {product, validate(flags)->args, plan(get,args)->(base,body), send(http,args,body_text)->text, readback(get,args,base,body_text,result)->bool}
+OPERATIONS = {}  # name -> {product, validate(flags)->args, plan(get,args)->(base,body), send(http,args,base,body_text)->text, readback(get,args,base,body_text,result)->bool}
+SPACE_KEY_RE = re.compile(r"^[A-Z][A-Z0-9]*$")
+PAGE_ID_RE = re.compile(r"^[0-9]+$")
+
+
+# --- operation: page-create (Confluence v2) ---------------------------------
+
+def _read_adf(path_str):
+    p = pathlib.Path(path_str)
+    try:
+        raw = p.read_text()
+    except FileNotFoundError:
+        raise Fatal(f"body file {path_str} not found") from None
+    except OSError as e:
+        raise Fatal(f"cannot read the body file {path_str}: {type(e).__name__}") from None
+    doc = parse_json(raw, str(p))
+    if not isinstance(doc, dict) or doc.get("type") != "doc":
+        raise Fatal(f"the body file {p} is not an ADF doc (need a {{'type': 'doc', ...}} object)")
+    return doc
+
+
+def _conf_paged(get, path, params):
+    out, cursor = [], None
+    while True:
+        qs = dict(params)
+        if cursor:
+            qs["cursor"] = cursor
+        page = get(path, qs)
+        results = page.get("results") if isinstance(page, dict) else None
+        if not isinstance(results, list):
+            raise Fatal(f"unexpected shape from {path} (need results[])")
+        out.extend(results)
+        nxt = page.get("_links", {}).get("next") if isinstance(page.get("_links"), dict) else None
+        if not nxt:
+            return out
+        cursor = (urllib.parse.parse_qs(urllib.parse.urlsplit(nxt).query).get("cursor") or [""])[0]
+        if not cursor:
+            raise Fatal(f"the next link of {path} has no cursor")
+
+
+def _validate_page_create(flags):
+    if not SPACE_KEY_RE.match(str(flags.get("space", ""))):
+        raise Fatal("--space must be an uppercase space key")
+    if not str(flags.get("title", "")):
+        raise Fatal("--title is required")
+    if "parent" in flags and not PAGE_ID_RE.match(str(flags["parent"])):
+        raise Fatal("--parent must be a page id (digits)")
+    if "body-adf" not in flags:
+        raise Fatal("--body-adf FILE is required")
+    return dict(flags)
+
+
+def _plan_page_create(get, args):
+    doc = _read_adf(args["body-adf"])
+    spaces = _conf_paged(get, "/spaces", {"keys": args["space"]})
+    matching = [sp for sp in spaces if str(sp.get("key", "")) == args["space"]]
+    if len(matching) != 1:
+        raise Fatal(f"expected exactly one space named {args['space']}, found {len(matching)} "
+                    f"(the listing only shows what this account can see)")
+    space_id = str(matching[0]["id"])
+    dup = _conf_paged(get, "/pages", {"space-id": space_id, "title": args["title"]})
+    if dup:
+        raise Fatal(f"a page titled {args['title']!r} already exists in that space (the listing only "
+                    f"shows what this account can see, so an empty result is not proof)")
+    parent_id = None
+    if "parent" in args:
+        parent = get(f"/pages/{args['parent']}", {})
+        if str(parent.get("spaceId")) != space_id:
+            raise Fatal(f"parent page {args['parent']} lives in space {parent.get('spaceId')}, not {space_id}")
+        parent_id = str(args["parent"])
+    return {"spaceId": space_id, "parentId": parent_id}, doc
+
+
+def _send_page_create(http, args, base, body_text):
+    wire = {"spaceId": base["spaceId"], "status": "current", "title": args["title"],
+            "body": {"representation": "atlas_doc_format", "value": body_text}}
+    if base.get("parentId"):
+        wire["parentId"] = base["parentId"]
+    return http("POST", "/pages", json.dumps(wire).encode())
+
+
+def _readback_page_create(get, args, base, body_text, result):
+    pid = str(result.get("id", "")) if isinstance(result, dict) else ""
+    if not PAGE_ID_RE.match(pid):
+        return False
+    page = get(f"/pages/{pid}", {"body-format": "atlas_doc_format"})
+    sent_adf = json.loads(body_text)
+    val = (page.get("body", {}).get("atlas_doc_format", {}) or {}).get("value", "")
+    try:
+        back = json.loads(val)
+    except (ValueError, AttributeError):
+        return False
+    return canonical(back) == canonical(sent_adf) and page.get("title") == args["title"]
+
+
+OPERATIONS["page-create"] = {"product": "confluence", "validate": _validate_page_create,
+                             "plan": _plan_page_create, "send": _send_page_create,
+                             "readback": _readback_page_create}
+SPACE_KEY_RE = re.compile(r"^[A-Z][A-Z0-9]*$")
+PAGE_ID_RE = re.compile(r"^[0-9]+$")
 
 
 def canonical(obj):
@@ -93,13 +192,14 @@ def resolve_target(opener, run, flags, env_file, product):
         raise Fatal(f"{token_key} is missing in {env_file}")
     cid = cloud_id(thost, opener)
     target = {"host": thost, "cloudId": cid, "email": temail}
-    base_url = f"{PRODUCT_BASE[product]}/{cid}"
+    api_suffix = {"jira": "", "confluence": "/wiki/api/v2"}[product]
+    base_url = f"{PRODUCT_BASE[product]}/{cid}{api_suffix}"
 
     def get(path, params=None):
         url = base_url + path + ("?" + urllib.parse.urlencode(params) if params else "")
         return json.loads(http_request(opener, "GET", url, (temail, env[token_key])))
 
-    return label, target, env[token_key], get
+    return label, target, env[token_key], get, base_url
 
 
 def write_request(payload):
@@ -120,7 +220,7 @@ def do_plan(opener, run, env_file, flags, pos):
         raise Fatal(f"unknown operation: {pos[0]!r} (registered: none in phase 1)" if not OPERATIONS
                     else f"unknown operation: {pos[0]!r} (registered: {', '.join(sorted(OPERATIONS))})")
     args = op["validate"]({k: v for k, v in flags.items() if k != "env-file"})
-    label, target, token, get = resolve_target(opener, run, flags, env_file, op["product"])
+    label, target, token, get, _ = resolve_target(opener, run, flags, env_file, op["product"])
     base, body = op["plan"](get, args)
     body_text = canonical(body)
     payload = {"schema": 1, "created": datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
@@ -177,20 +277,22 @@ def do_apply(opener, run, env_file, flags, pos):
     if not isinstance(data["args"], dict) or not isinstance(data["target"], dict):
         raise Fatal("the request file has the wrong shapes in args/target")
     args = op["validate"](data["args"])
-    label, target, token, get = resolve_target(opener, run, flags, env_file, op["product"])
+    label, target, token, get, send_base = resolve_target(opener, run, flags, env_file, op["product"])
     if data["target"].get("host") != target["host"] or data["target"].get("email") != target["email"]:
         raise Fatal("the target changed since the plan; plan again")
-    base, body = op["plan"](get, args)
+    try:
+        base, body = op["plan"](get, args)
+    except Fatal as e:
+        raise Fatal(f"the live state changed since the plan: {e}") from None
     if canonical(base) != canonical(data["base"]):
         raise Fatal("the live state changed since the plan; plan again")
     body_text = canonical(json.loads(data["body_text"]))
     if body_text != canonical(body):
         raise Fatal("the rebuilt request body does not match the previewed one; plan again")
     auth = (target["email"], token)
-    send_base = f"{PRODUCT_BASE[op['product']]}/{target['cloudId']}"
     http = lambda method, path, payload: http_request(opener, method, send_base + path, auth, payload)
     try:
-        result_text = op["send"](http, args, data["body_text"])
+        result_text = op["send"](http, args, base, data["body_text"])
     except HttpError as e:
         if e.code < 500:
             return _exit2(e.code, f"HTTP {e.code} from the write")
