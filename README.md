@@ -59,7 +59,7 @@ This plugin is **not self-contained**. It needs, installed separately:
    MCP tools) — used as a fallback for the handful of things `acli` genuinely can't do
    yet (see `skills/acli/SKILL.md` § "When acli can't"), by `jira-content` when `acli`
    is unavailable or can't set a required field, and as the **only** backend for
-   `confluence-content` (Confluence page create/update has no acli path).
+   `confluence-content` (Confluence page create/update has no acli path). Status (2026-11-19): the MCP is unavailable here (blocked token), so Confluence page writes have no working path.
 
 No skill ships its own `.mcp.json` — bundling one for a fallback path would mean
 duplicating credentials and rewriting every MCP tool literal for no functional gain.

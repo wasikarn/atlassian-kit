@@ -55,7 +55,7 @@ python3 skills/acli/scripts/md2adf.py somefile.md | python3 skills/acli/scripts/
 - **Preview before mutate:** bulk ops preview via the same `--jql`; creates render the payload with
   `adf2md.py` first. Replicate in any new writing script.
 - **acli first, Atlassian MCP only for the gaps listed in `skills/acli/SKILL.md` § "When acli
-  can't"** (page create/update are MCP-only). Update that list before using MCP elsewhere.
+  can't"** (page create/update are MCP-only). Status 2026-11-19: no Atlassian MCP tools are available in this environment. Update that list before using MCP elsewhere.
 - **Cross-skill coupling:** `jira-content` wraps `acli` scripts via `../../..` climbs; an ADF or
   script-interface change in `acli` must be checked there. New wrappers resolve their dir with
   `BASH_SOURCE[0]`, not `dirname "$0"`.

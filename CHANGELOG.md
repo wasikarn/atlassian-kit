@@ -8,6 +8,16 @@ Pre-`1.0.0`: breaking changes may land in any `0.x` release.
 This file starts at `0.1.18` — releases before that predate the changelog. See
 `git log` for the full history back to `0.1.0`.
 
+## [0.1.58] — 2026-11-19
+**Read-only REST script, and docs that say the MCP may be absent.** New
+`skills/acli/scripts/acli-rest-get.py` covers three lookups acli cannot do: `transitions`, `find-user`
+and `createmeta`. It can only send GET. Site and email come from `acli jira auth status`, the host must be
+`*.atlassian.net`, the token is read from the macOS Keychain (service `acli-rest-read:<host>`, account
+`<email>`) and goes only to `api.atlassian.com`, and redirects are never followed. 24 tests run it against
+a fake opener. Not yet run against a live site, so the skills do not name it yet. The skills, both agents,
+`README.md` and `CLAUDE.md` now state that where no Atlassian MCP tools are in the session, the gaps in
+"When acli can't" are UI-only and Confluence page create/update has no path.
+
 ## [0.1.57] — 2026-11-13
 **Leftover identifiers removed, Mermaid setup documented.** A deep-audit of 0.1.53-0.1.56 found the
 0.1.53 scrub incomplete: two Confluence space keys and a space id, a page id (in the script's usage lines and

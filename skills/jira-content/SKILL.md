@@ -85,6 +85,8 @@ Reply: `✅ Created [PROJ-XXX](https://<site>.atlassian.net/browse/PROJ-XXX)`. I
 
 ### 5b — Jira issue MCP fallback
 
+> **Status, 2026-11-19:** no Atlassian MCP tools are available here. If Step 5 needs one, stop and tell the user instead of building the payload.
+
 Call `mcp__plugin_atlassian_atlassian__createJiraIssue` (v2 shape per Atlassian's v2 skills, see `acli/SKILL.md` § "When acli can't"; v1 differences in the comments):
 
 ```

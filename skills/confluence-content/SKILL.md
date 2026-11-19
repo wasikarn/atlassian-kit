@@ -96,6 +96,8 @@ Show resolved metadata (site, space, parent, title) + rendered Thai content as a
 
 ## Step 5 — Create
 
+> **Status, 2026-11-19:** no Atlassian MCP tools are available here, and page create/update has no acli path. Stop and tell the user; do not create or update a page.
+
 ```
 mcp__plugin_atlassian_atlassian__createConfluenceContent (v1: `createConfluencePage`)
   cloudId:     <resolved>
