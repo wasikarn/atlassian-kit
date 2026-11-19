@@ -248,8 +248,7 @@ def do_plan(opener, run, env_file, flags, pos):
         raise Fatal(USAGE)
     op = OPERATIONS.get(pos[0])
     if op is None:
-        raise Fatal(f"unknown operation: {pos[0]!r} (registered: none in phase 1)" if not OPERATIONS
-                    else f"unknown operation: {pos[0]!r} (registered: {', '.join(sorted(OPERATIONS))})")
+        raise Fatal(f"unknown operation: {pos[0]!r} (registered: {', '.join(sorted(OPERATIONS))})")
     args = op["validate"]({k: v for k, v in flags.items() if k != "env-file"}, pos[1:])
     label, target, token, get, _ = resolve_target(opener, run, flags, env_file, op["product"])
     base, body = op["plan"](get, args)
