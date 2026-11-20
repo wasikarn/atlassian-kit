@@ -383,7 +383,7 @@ def test_tokens_never_reach_stdout_or_stderr_on_error_paths():
 
 
 def test_registered_operations_match_the_plan_phases_so_far():
-    assert sorted(rw.OPERATIONS) == ["issue-set", "page-create", "page-delete", "page-fetch", "page-update",
+    assert sorted(rw.OPERATIONS) == ["attachment-upload", "issue-set", "page-create", "page-delete", "page-fetch", "page-update",
                                      "version-create", "version-delete", "version-edit"], sorted(rw.OPERATIONS)
     for name, op in rw.OPERATIONS.items():
         expected = {"product", "validate", "plan", "send", "readback"} if name != "page-fetch" else {"planOnly", "product", "validate", "plan"}
@@ -1277,6 +1277,156 @@ def test_page_delete_apply_refuses_when_the_page_gained_a_child_after_the_plan()
     assert "DELETE" not in {c.get_method() for c in op.calls}
 
 
+# --- attachment-upload (0.1.75): one image to a page, via Confluence v1 multipart ---------
+
+V1 = f"https://api.atlassian.com/ex/confluence/{CID}/wiki/rest/api"
+PNG = b"\x89PNG\r\n\x1a\n" + b"fake-image-bytes"
+
+
+def _img(name="diagram.png", data=PNG):
+    p = Path(tempfile.mkdtemp()) / name
+    p.write_bytes(data)
+    return p
+
+
+def _attach_routes(state):
+    def v2(req):
+        u, m = urllib.parse.urlsplit(req.full_url).path, req.get_method()
+        if m == "GET" and u.endswith("/pages/555"):
+            return json.dumps({"id": "555", "status": "current", "title": "Demo page", "spaceId": "123"})
+        if m == "GET" and u.endswith("/pages/555/attachments"):
+            want = urllib.parse.parse_qs(urllib.parse.urlsplit(req.full_url).query).get("filename", [None])[0]
+            rows = [a for a in state["atts"] if want in (None, a["title"])]
+            return json.dumps({"results": rows})
+        raise AssertionError(f"unexpected {m} {u}")
+
+    def v1(req):
+        assert req.get_method() == "POST" and req.full_url.endswith("/content/555/child/attachment"), req.full_url
+        state["post"] = req
+        m = re.search(rb'filename="([^"]+)"', req.data)
+        name = m.group(1).decode()
+        if state.get("drop"):
+            return json.dumps({"results": [{"id": "att1", "title": name}]})
+        state["atts"].append({"id": "att1", "title": name, "fileSize": len(PNG)})
+        return json.dumps({"results": [{"id": "att1", "title": name}]})
+    return [(V1, v1), (CONF, v2), tenant_route()]
+
+
+def env_att():
+    return env_file(ENV_OK + "ACLI_REST_WRITE_CONFLUENCE_FILE_TOKEN=filetoken-xyz\n")
+
+
+def test_attachment_upload_plan_refuses_when_the_file_token_is_missing_and_sends_nothing():
+    code, _, err, op = run(["plan", "attachment-upload", "--page", "555", "--file", str(_img())],
+                           _attach_routes({"atts": []}), env=env_conf())
+    assert code == 1 and "ACLI_REST_WRITE_CONFLUENCE_FILE_TOKEN" in err and op.calls == []
+
+
+def test_attachment_upload_sends_the_post_with_the_file_token_and_reads_with_the_granular_one():
+    import base64
+    state = {"atts": []}
+    code, out, err, _ = run(["plan", "attachment-upload", "--page", "555", "--file", str(_img())],
+                            _attach_routes(state), env=env_att())
+    assert code == 0, err
+    path, conf = request_path(out), confirm_of(out)
+    code, _, err2, op = run(["apply", str(path), "--confirm", conf], _attach_routes(state), env=env_att())
+    assert code == 0, err2
+    want_file = "Basic " + base64.b64encode(f"{EMAIL}:filetoken-xyz".encode()).decode()
+    auth = {c.get_method(): set() for c in op.calls}
+    for c in op.calls:
+        auth[c.get_method()].add(c.get_header("Authorization"))
+    assert auth["POST"] == {want_file}
+    assert want_file not in auth["GET"]
+
+
+def test_attachment_upload_refuses_bad_arguments_before_any_request():
+    good = _img()
+    for argv in (["plan", "attachment-upload"],
+                 ["plan", "attachment-upload", "--page", "555"],
+                 ["plan", "attachment-upload", "--file", str(good)],
+                 ["plan", "attachment-upload", "--page", "abc", "--file", str(good)],
+                 ["plan", "attachment-upload", "--page", "555", "--file", str(_img("notes.txt"))],
+                 ["plan", "attachment-upload", "--page", "555", "--file", str(_img(".env.png"))],
+                 ["plan", "attachment-upload", "--page", "555", "--file", str(good), "--name", "../x.png"],
+                 ["plan", "attachment-upload", "--page", "555", "--file", str(good), "--purge", "true"]):
+        code, _, err, op = run(argv, _attach_routes({"atts": []}), env=env_att())
+        assert code == 1 and op.calls == [], (argv, err)
+
+
+def test_attachment_upload_plan_refuses_a_missing_file_an_empty_file_and_a_huge_file():
+    for path, why in ((Path("/nonexistent/x.png"), "not found"), (_img("e.png", b""), "empty")):
+        code, _, err, _ = run(["plan", "attachment-upload", "--page", "555", "--file", str(path)],
+                              _attach_routes({"atts": []}), env=env_att())
+        assert code == 1 and why in err, (path, err)
+    big = _img("big.png", b"x" * (10 * 1024 * 1024 + 1))
+    code, _, err, _ = run(["plan", "attachment-upload", "--page", "555", "--file", str(big)],
+                          _attach_routes({"atts": []}), env=env_att())
+    assert code == 1 and "10 MB" in err
+
+
+def test_attachment_upload_plan_previews_name_size_and_hash_and_sends_no_write():
+    img = _img()
+    code, out, err, op = run(["plan", "attachment-upload", "--page", "555", "--file", str(img)],
+                             _attach_routes({"atts": []}), env=env_att())
+    assert code == 0, err
+    assert "diagram.png" in out and str(len(PNG)) in out and "confirm:" in out
+    assert {c.get_method() for c in op.calls} == {"GET"}
+    assert PNG.decode("latin-1") not in out  # the file content never lands in the preview
+
+
+def test_attachment_upload_plan_refuses_a_name_the_page_already_has():
+    state = {"atts": [{"id": "a0", "title": "diagram.png", "fileSize": 3}]}
+    code, _, err, _ = run(["plan", "attachment-upload", "--page", "555", "--file", str(_img())],
+                          _attach_routes(state), env=env_att())
+    assert code == 1 and "already has" in err
+
+
+def test_attachment_upload_plan_refuses_a_page_that_is_not_current():
+    def v2(req):
+        return json.dumps({"id": "555", "status": "trashed", "title": "x", "spaceId": "123"})
+    code, _, err, _ = run(["plan", "attachment-upload", "--page", "555", "--file", str(_img())],
+                          [(CONF, v2), tenant_route()], env=env_att())
+    assert code == 1 and "current" in err
+
+
+def test_attachment_upload_apply_posts_multipart_with_the_xsrf_header_and_verifies():
+    state = {"atts": []}
+    img = _img()
+    code, out, err, _ = run(["plan", "attachment-upload", "--page", "555", "--file", str(img)],
+                            _attach_routes(state), env=env_att())
+    assert code == 0, err
+    path, conf = request_path(out), confirm_of(out)
+    code, _, err2, _ = run(["apply", str(path), "--confirm", conf], _attach_routes(state), env=env_att())
+    assert code == 0, err2
+    req = state["post"]
+    assert req.get_header("X-atlassian-token") == "no-check"
+    assert req.get_header("Content-type").startswith("multipart/form-data; boundary=")
+    assert PNG in req.data and b'filename="diagram.png"' in req.data
+    assert not path.exists()
+
+
+def test_attachment_upload_apply_refuses_when_the_file_changed_after_the_plan():
+    state = {"atts": []}
+    img = _img()
+    code, out, err, _ = run(["plan", "attachment-upload", "--page", "555", "--file", str(img)],
+                            _attach_routes(state), env=env_att())
+    path, conf = request_path(out), confirm_of(out)
+    img.write_bytes(PNG + b"tampered")
+    code, _, err2, op = run(["apply", str(path), "--confirm", conf], _attach_routes(state), env=env_att())
+    assert code == 1 and "changed" in err2 and "post" not in state
+    assert "POST" not in {c.get_method() for c in op.calls}
+
+
+def test_attachment_upload_apply_exits_3_when_the_readback_does_not_find_the_file():
+    state = {"atts": [], "drop": True}
+    img = _img()
+    code, out, err, _ = run(["plan", "attachment-upload", "--page", "555", "--file", str(img)],
+                            _attach_routes(state), env=env_att())
+    path, conf = request_path(out), confirm_of(out)
+    code, _, err2, _ = run(["apply", str(path), "--confirm", conf], _attach_routes(state), env=env_att())
+    assert code == 3 and "UNVERIFIED" in err2
+
+
 # --- the re-validation invariant: apply re-runs each validator on stored args --
 
 def _stored_args_for_every_operation():
@@ -1290,6 +1440,7 @@ def _stored_args_for_every_operation():
         "version-delete": ({"id": "18329"}, ()),
         "page-update": ({"base": "seed.base.json", "body-adf": "seed.adf.json"}, ()),
         "page-delete": ({"page": "555"}, ()),
+        "attachment-upload": ({"page": "555", "file": "seed.png"}, ()),
     }
     assert set(seeds) == set(rw.OPERATIONS) - {"page-fetch"}, \
         "every writable operation needs a seed here (add one with the operation)"

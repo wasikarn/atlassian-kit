@@ -72,21 +72,23 @@ def acli_identity(run):
     return host, emails[0]
 
 
-def http_request(opener, method, url, auth=None, body=None):
+def http_request(opener, method, url, auth=None, body=None, content_type="application/json", headers=None):
     """Send one request and return the body text. auth=(email, token) only ever goes to api.atlassian.com.
     HttpError when the server answers non-2xx; NetError when there is no answer."""
     if method not in ALLOWED_METHODS:
         raise Fatal(f"method {method!r} is not allowed")
     netloc = urllib.parse.urlsplit(url).netloc
-    headers = {"Accept": "application/json"}
+    headers_out = {"Accept": "application/json"}
     if auth is not None:
         if netloc != API_HOST:
             raise Fatal(f"refusing to send the credential to {netloc}")
         raw = f"{auth[0]}:{auth[1]}".encode()
-        headers["Authorization"] = "Basic " + base64.b64encode(raw).decode()
+        headers_out["Authorization"] = "Basic " + base64.b64encode(raw).decode()
+    for k, v in (headers or {}).items():  # extra headers (Confluence XSRF opt-out); never the credential
+        headers_out[k] = v
     if body is not None:
-        headers["Content-Type"] = "application/json"
-    req = urllib.request.Request(url, data=body, headers=headers, method=method)
+        headers_out["Content-Type"] = content_type
+    req = urllib.request.Request(url, data=body, headers=headers_out, method=method)
     try:
         with opener.open(req, timeout=TIMEOUT) as resp:
             return resp.read().decode()

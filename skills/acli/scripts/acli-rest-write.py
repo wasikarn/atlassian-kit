@@ -20,13 +20,14 @@ or connection error once the write started, a 5xx, or a read-back that fails or 
 Do not re-run `apply` at 3 before checking.
 
 Credentials come from a mode-600 env file: ACLI_REST_WRITE_SITE, ACLI_REST_WRITE_EMAIL,
-ACLI_REST_WRITE_JIRA_TOKEN, ACLI_REST_WRITE_CONFLUENCE_TOKEN. The default file is ~/.claude/atlassian.env
+ACLI_REST_WRITE_JIRA_TOKEN, ACLI_REST_WRITE_CONFLUENCE_TOKEN (plus ACLI_REST_WRITE_CONFLUENCE_FILE_TOKEN,
+a classic token with only write:confluence-file, for attachment-upload). The default file is ~/.claude/atlassian.env
 and must agree with `acli jira auth status`. --env-file names an alternate target (a test site); it must
 be a different site than acli's, and the preview labels it ALTERNATE TARGET. The acli-guard hook
 denies every subagent call of this script; approving a preview covers calls made through it and
 nothing else.
 Operations: Confluence page-create / page-fetch (read-only; writes the base+adf files) / page-update /
-page-delete (to the trash, never purge);
+page-delete (to the trash, never purge) / attachment-upload (one image, v1 multipart);
 Jira issue-set / version-create / version-edit / version-delete.
 """
 import datetime
@@ -35,6 +36,7 @@ import json
 import os
 import pathlib
 import re
+import secrets
 import sys
 import tempfile
 import urllib.parse
@@ -199,7 +201,7 @@ def _check_flags(flags, known, op):
         raise Fatal(f"unknown flag(s) for {op}: " + ", ".join(f"--{f}" for f in extra))
 
 
-def resolve_target(opener, run, flags, env_file, product):
+def resolve_target(opener, run, flags, env_file, product, send_api=None, send_token_key=None):
     """Validate the target before any token is used. Return (label, host, email, cid, token, get)."""
     host, email = acli_identity(run)
     alternate = pathlib.Path(_one(flags, "env-file")) if "env-file" in flags else None
@@ -223,6 +225,9 @@ def resolve_target(opener, run, flags, env_file, product):
     token_key = f"ACLI_REST_WRITE_{product.upper()}_TOKEN"
     if not env.get(token_key):
         raise Fatal(f"{token_key} is missing in {used}")
+    send_key = send_token_key or token_key  # reads always use token_key; only the write call may use another
+    if not env.get(send_key):
+        raise Fatal(f"{send_key} is missing in {used}")
     cid = cloud_id(thost, opener)
     target = {"host": thost, "cloudId": cid, "email": temail}
     api_suffix = {"jira": "", "confluence": "/wiki/api/v2"}[product]
@@ -232,7 +237,8 @@ def resolve_target(opener, run, flags, env_file, product):
         url = base_url + path + ("?" + urllib.parse.urlencode(params) if params else "")
         return json.loads(http_request(opener, "GET", url, (temail, env[token_key])))
 
-    return label, target, env[token_key], get, base_url
+    send_base = base_url if send_api is None else f"{PRODUCT_BASE[product]}/{cid}{send_api}"
+    return label, target, env[send_key], get, send_base
 
 
 def _notes(args, flags):
@@ -256,7 +262,8 @@ def do_plan(opener, run, env_file, flags, pos):
     if op is None:
         raise Fatal(f"unknown operation: {pos[0]!r} (registered: {', '.join(sorted(OPERATIONS))})")
     args = op["validate"]({k: v for k, v in flags.items() if k != "env-file"}, pos[1:])
-    label, target, token, get, _ = resolve_target(opener, run, flags, env_file, op["product"])
+    label, target, token, get, _ = resolve_target(opener, run, flags, env_file, op["product"], None,
+                                                   op.get("send_token_key"))
     base, body = op["plan"](get, args)
     if op.get("planOnly"):
         print(json.dumps({"base": base, "body": body}, ensure_ascii=False))
@@ -321,7 +328,8 @@ def do_apply(opener, run, env_file, flags, pos):
     if op.get("planOnly"):
         raise Fatal(f"{data['operation']} is read-only; there is nothing to apply")
     args = op["validate"](data["args"], ())
-    label, target, token, get, send_base = resolve_target(opener, run, flags, env_file, op["product"])
+    label, target, token, get, send_base = resolve_target(opener, run, flags, env_file, op["product"], op.get("send_api"),
+                                                           op.get("send_token_key"))
     if data["target"].get("host") != target["host"] or data["target"].get("email") != target["email"]:
         raise Fatal("the target changed since the plan; plan again")
     try:
@@ -334,7 +342,8 @@ def do_apply(opener, run, env_file, flags, pos):
     if body_text != canonical(body):
         raise Fatal("the rebuilt request body does not match the previewed one; plan again")
     auth = (target["email"], token)
-    http = lambda method, path, payload: http_request(opener, method, send_base + path, auth, payload)
+    http = lambda method, path, payload, ctype="application/json", extra=None: http_request(
+        opener, method, send_base + path, auth, payload, ctype, extra)
     try:
         result_text = op["send"](http, args, base, data["body_text"])
     except HttpError as e:
@@ -816,6 +825,87 @@ def _readback_page_delete(get, args, base, body_text, result):
 OPERATIONS["page-delete"] = {"product": "confluence", "validate": _validate_page_delete,
                              "plan": _plan_page_delete, "send": _send_page_delete,
                              "readback": _readback_page_delete}
+
+
+# --- operation: attachment-upload (Confluence v1 multipart; v2 has no upload) --
+# One image file to one current page. Never replaces: a name the page already has is refused.
+
+ATTACH_EXTS = (".png", ".jpg", ".jpeg", ".gif", ".svg")
+ATTACH_MAX = 10 * 1024 * 1024
+ATTACH_NAME_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]{0,99}$")
+ATTACH_TYPES = {".png": "image/png", ".jpg": "image/jpeg", ".jpeg": "image/jpeg", ".gif": "image/gif",
+                ".svg": "image/svg+xml"}
+
+
+def _validate_attachment_upload(flags, pos=()):
+    if pos:
+        raise Fatal(f"attachment-upload takes no positional arguments: {pos[0]!r}")
+    _check_flags(flags, {"page", "file", "name"}, "attachment-upload")
+    for f in ("page", "file", "name"):
+        _one(flags, f)
+    if "page" not in flags or not PAGE_ID_RE.match(str(flags["page"])) or "file" not in flags:
+        raise Fatal("usage: attachment-upload --page <page id> --file <image path> [--name NAME]")
+    path = pathlib.Path(str(flags["file"])).expanduser().resolve()
+    name = str(flags.get("name") or path.name)
+    if not ATTACH_NAME_RE.match(name):
+        raise Fatal(f"--name {name!r} must be 1-100 chars of letters, digits, dot, dash, underscore, "
+                    f"not starting with a dot")
+    for label, value in (("file", path.name.lower()), ("name", name.lower())):
+        if not value.endswith(ATTACH_EXTS):
+            raise Fatal(f"the {label} must end in one of {', '.join(ATTACH_EXTS)} (images only)")
+    return {"page": str(flags["page"]), "file": str(path), "name": name}
+
+
+def _attach_bytes(args):
+    path = pathlib.Path(args["file"])
+    if not path.is_file():
+        raise Fatal(f"file {path} not found")
+    size = path.stat().st_size
+    if size == 0:
+        raise Fatal(f"file {path} is empty")
+    if size > ATTACH_MAX:
+        raise Fatal(f"file {path} is {size} bytes; the limit is 10 MB")
+    return path.read_bytes()
+
+
+def _plan_attachment_upload(get, args):
+    data = _attach_bytes(args)
+    page = get(f"/pages/{args['page']}", {})
+    if page.get("status") != "current":
+        raise Fatal(f"page {args['page']} is not current (status {page.get('status')!r})")
+    existing = get(f"/pages/{args['page']}/attachments", {"filename": args["name"]}).get("results") or []
+    if any(a.get("title") == args["name"] for a in existing):
+        raise Fatal(f"page {args['page']} already has an attachment named {args['name']!r}; "
+                    f"pick another --name (this operation never replaces)")
+    body = {"filename": args["name"], "sha256": hashlib.sha256(data).hexdigest(), "size": len(data)}
+    return {"pageId": str(page.get("id")), "spaceId": str(page.get("spaceId")), **body}, body
+
+
+def _send_attachment_upload(http, args, base, body_text):
+    data = _attach_bytes(args)
+    if hashlib.sha256(data).hexdigest() != base["sha256"]:
+        raise Fatal("the file changed since the plan; plan again")
+    boundary = "acli" + secrets.token_hex(16)
+    ctype = ATTACH_TYPES[pathlib.Path(args["name"]).suffix.lower()]
+    head = (f"--{boundary}\r\nContent-Disposition: form-data; name=\"minorEdit\"\r\n\r\ntrue\r\n"
+            f"--{boundary}\r\nContent-Disposition: form-data; name=\"file\"; filename=\"{args['name']}\"\r\n"
+            f"Content-Type: {ctype}\r\n\r\n").encode()
+    payload = head + data + f"\r\n--{boundary}--\r\n".encode()
+    return http("POST", f"/content/{base['pageId']}/child/attachment", payload,
+                f"multipart/form-data; boundary={boundary}", {"X-Atlassian-Token": "no-check"})
+
+
+def _readback_attachment_upload(get, args, base, body_text, result):
+    rows = get(f"/pages/{base['pageId']}/attachments", {"filename": base["filename"]}).get("results") or []
+    return len(rows) == 1 and rows[0].get("title") == base["filename"] and rows[0].get("fileSize") == base["size"]
+
+
+# Confluence v1 uploads reject granular tokens (401 scope mismatch); the write call uses a separate
+# classic token holding only write:confluence-file. Reads and the read-back keep the granular token.
+OPERATIONS["attachment-upload"] = {"product": "confluence", "send_api": "/wiki/rest/api",
+                                   "send_token_key": "ACLI_REST_WRITE_CONFLUENCE_FILE_TOKEN",
+                                   "validate": _validate_attachment_upload, "plan": _plan_attachment_upload,
+                                   "send": _send_attachment_upload, "readback": _readback_attachment_upload}
 
 
 

@@ -8,6 +8,18 @@ Pre-`1.0.0`: breaking changes may land in any `0.x` release.
 This file starts at `0.1.18` — releases before that predate the changelog. See
 `git log` for the full history back to `0.1.0`.
 
+## [0.1.75] — 2026-11-20
+**`attachment-upload` operation.** `acli-rest-write.py plan attachment-upload --page <id> --file <image> [--name N]`
+attaches one image (png, jpg, gif, svg; 1 byte to 10 MB) to a current page through Confluence v1 multipart
+(v2 has no upload), verified by a v2 read-back of name and size. It never replaces: a name the page already
+has is refused. Apply re-hashes the file and refuses if it changed after the plan. The v1 upload rejects
+granular tokens (401 "scope does not match"), so the write call alone uses
+`ACLI_REST_WRITE_CONFLUENCE_FILE_TOKEN`, a classic token with only `write:confluence-file`; reads and the
+read-back keep the granular token, and plan stops before any request when the key is missing. The granular
+token also needs `read:attachment:confluence` and `write:attachment:confluence` for the plan check. `http_request`
+takes an optional content type and extra headers (defaults unchanged). 10 new write tests (96 total).
+Verified live on mimotech 2026-11-20: probe page created in ARAC, PNG attached, read back, page trashed.
+
 ## [0.1.74] — 2026-11-20
 **`page-delete` operation.** `acli-rest-write.py plan page-delete --page <id>` moves one Confluence page
 to the trash (v2 `DELETE /pages/{id}`, never `purge`), verified by a 404 or `trashed` read-back. The plan
