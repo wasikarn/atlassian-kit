@@ -8,6 +8,14 @@ Pre-`1.0.0`: breaking changes may land in any `0.x` release.
 This file starts at `0.1.18` — releases before that predate the changelog. See
 `git log` for the full history back to `0.1.0`.
 
+## [0.1.74] — 2026-11-20
+**`page-delete` operation.** `acli-rest-write.py plan page-delete --page <id>` moves one Confluence page
+to the trash (v2 `DELETE /pages/{id}`, never `purge`), verified by a 404 or `trashed` read-back. The plan
+refuses a page that is not current, a space homepage and a page with children; `apply` re-checks all
+three against live state. First live use: delete the ARAC write-access test page. 9 new write tests
+(86 total), including the re-validation invariant seed. No guard change: the guard matches the script
+name, so subagents stay denied and the main thread prompts, as for every other operation.
+
 ## [0.1.73] — 2026-11-19
 **CI guardrail + the re-validation invariant test.** The repo had no automated check on push — tests ran
 only by hand. `.github/workflows/ci.yml` now replays the CLAUDE.md § Commands checks on every push and

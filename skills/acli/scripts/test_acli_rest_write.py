@@ -285,7 +285,7 @@ def test_apply_refuses_an_operation_the_registry_does_not_know():
     code, out, _, _ = plan_for()
     path = request_path(out)
     data = json.loads(path.read_text())
-    data["operation"] = "page-delete"
+    data["operation"] = "page-purge"
     path.write_text(json.dumps(data))
     code, _, err, op = apply_for(path, hashlib.sha256(path.read_bytes()).hexdigest()[:12])
     assert code == 1 and "unknown operation" in err
@@ -383,8 +383,8 @@ def test_tokens_never_reach_stdout_or_stderr_on_error_paths():
 
 
 def test_registered_operations_match_the_plan_phases_so_far():
-    assert sorted(rw.OPERATIONS) == ["issue-set", "page-create", "page-fetch", "page-update", "version-create",
-                                     "version-delete", "version-edit"], sorted(rw.OPERATIONS)
+    assert sorted(rw.OPERATIONS) == ["issue-set", "page-create", "page-delete", "page-fetch", "page-update",
+                                     "version-create", "version-delete", "version-edit"], sorted(rw.OPERATIONS)
     for name, op in rw.OPERATIONS.items():
         expected = {"product", "validate", "plan", "send", "readback"} if name != "page-fetch" else {"planOnly", "product", "validate", "plan"}
         assert set(op) >= expected, (name, sorted(op))
@@ -1186,6 +1186,97 @@ def test_version_edit_round_trips_a_release_date_edit():
     assert state["v"]["releaseDate"] == "2027-01-31"
 
 
+# --- page-delete (0.1.74): Confluence page to trash, with homepage/children/status refusals ----
+
+def _page_delete_routes(state):
+    def route(req):
+        u, m = urllib.parse.urlsplit(req.full_url).path, req.get_method()
+        if m == "DELETE" and u.endswith("/pages/555"):
+            state["deleted"] = req.full_url
+            state["page"] = dict(state["page"], status="trashed") if state.get("trash_visible") else None
+            return ""
+        if m == "GET" and u.endswith("/pages/555"):
+            if state["page"] is None:
+                return urllib.error.HTTPError(req.full_url, 404, "nf", http.client.HTTPMessage(), io.BytesIO(b"{}"))
+            return json.dumps(state["page"])
+        if m == "GET" and u.endswith("/pages/555/children"):
+            return json.dumps({"results": state.get("children", [])})
+        if m == "GET" and u.endswith("/spaces/123"):
+            return json.dumps({"id": "123", "key": "ARAC", "homepageId": state.get("homepage", "999")})
+        raise AssertionError(f"unexpected {m} {u}")
+    return [(CONF, route), tenant_route()]
+
+
+def _live_state(**extra):
+    return dict({"page": {"id": "555", "status": "current", "title": "Demo page", "spaceId": "123",
+                          "version": {"number": 7}}}, **extra)
+
+
+def test_page_delete_refuses_bad_arguments_before_any_request():
+    for argv in (["plan", "page-delete"], ["plan", "page-delete", "--page", "abc"],
+                 ["plan", "page-delete", "--page", "555", "--purge", "true"],
+                 ["plan", "page-delete", "555"]):
+        code, _, err, op = run(argv, _page_delete_routes(_live_state()), env=env_conf())
+        assert code == 1 and op.calls == [], (argv, err)
+
+
+def test_page_delete_plan_names_the_page_and_sends_no_write():
+    code, out, err, op = run(["plan", "page-delete", "--page", "555"],
+                             _page_delete_routes(_live_state()), env=env_conf())
+    assert code == 0, err
+    assert "Demo page" in out and "confirm:" in out
+    assert {c.get_method() for c in op.calls} == {"GET"}
+
+
+def test_page_delete_refuses_a_space_homepage():
+    code, _, err, _ = run(["plan", "page-delete", "--page", "555"],
+                          _page_delete_routes(_live_state(homepage="555")), env=env_conf())
+    assert code == 1 and "homepage" in err
+
+
+def test_page_delete_refuses_a_page_that_has_children():
+    code, _, err, _ = run(["plan", "page-delete", "--page", "555"],
+                          _page_delete_routes(_live_state(children=[{"id": "556"}])), env=env_conf())
+    assert code == 1 and "child" in err
+
+
+def test_page_delete_refuses_a_page_that_is_not_current():
+    state = _live_state()
+    state["page"]["status"] = "trashed"
+    code, _, err, _ = run(["plan", "page-delete", "--page", "555"], _page_delete_routes(state), env=env_conf())
+    assert code == 1 and "current" in err
+
+
+def test_page_delete_apply_trashes_without_purge_and_verifies_by_a_404_readback():
+    state = _live_state()
+    code, out, err, _ = run(["plan", "page-delete", "--page", "555"], _page_delete_routes(state), env=env_conf())
+    assert code == 0, err
+    path, conf = request_path(out), confirm_of(out)
+    code, out2, err2, _ = run(["apply", str(path), "--confirm", conf], _page_delete_routes(state), env=env_conf())
+    assert code == 0, err2
+    assert urllib.parse.urlsplit(state["deleted"]).query == ""  # no purge=true: the page stays in the trash
+    assert not path.exists()
+
+
+def test_page_delete_accepts_a_trashed_status_readback():
+    state = _live_state(trash_visible=True)
+    code, out, err, _ = run(["plan", "page-delete", "--page", "555"], _page_delete_routes(state), env=env_conf())
+    assert code == 0, err
+    path, conf = request_path(out), confirm_of(out)
+    code, _, err2, _ = run(["apply", str(path), "--confirm", conf], _page_delete_routes(state), env=env_conf())
+    assert code == 0, err2
+
+
+def test_page_delete_apply_refuses_when_the_page_gained_a_child_after_the_plan():
+    state = _live_state()
+    code, out, err, _ = run(["plan", "page-delete", "--page", "555"], _page_delete_routes(state), env=env_conf())
+    path, conf = request_path(out), confirm_of(out)
+    state["children"] = [{"id": "556"}]
+    code, _, err2, op = run(["apply", str(path), "--confirm", conf], _page_delete_routes(state), env=env_conf())
+    assert code == 1 and "deleted" not in state
+    assert "DELETE" not in {c.get_method() for c in op.calls}
+
+
 # --- the re-validation invariant: apply re-runs each validator on stored args --
 
 def _stored_args_for_every_operation():
@@ -1198,6 +1289,7 @@ def _stored_args_for_every_operation():
                           "release-date": "2030-01-01"}, ()),
         "version-delete": ({"id": "18329"}, ()),
         "page-update": ({"base": "seed.base.json", "body-adf": "seed.adf.json"}, ()),
+        "page-delete": ({"page": "555"}, ()),
     }
     assert set(seeds) == set(rw.OPERATIONS) - {"page-fetch"}, \
         "every writable operation needs a seed here (add one with the operation)"

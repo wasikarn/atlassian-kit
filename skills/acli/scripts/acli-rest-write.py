@@ -25,7 +25,8 @@ and must agree with `acli jira auth status`. --env-file names an alternate targe
 be a different site than acli's, and the preview labels it ALTERNATE TARGET. The acli-guard hook
 denies every subagent call of this script; approving a preview covers calls made through it and
 nothing else.
-Operations: Confluence page-create / page-fetch (read-only; writes the base+adf files) / page-update;
+Operations: Confluence page-create / page-fetch (read-only; writes the base+adf files) / page-update /
+page-delete (to the trash, never purge);
 Jira issue-set / version-create / version-edit / version-delete.
 """
 import datetime
@@ -768,6 +769,53 @@ OPERATIONS["page-fetch"] = {"product": "confluence", "planOnly": True,
 OPERATIONS["page-update"] = {"product": "confluence", "validate": _validate_page_update,
                              "plan": _plan_page_update, "send": _send_page_update,
                              "readback": _readback_page_update, "notes": _notes_page_update}
+
+
+# --- operation: page-delete (Confluence v2) ----------------------------------
+# Moves one page to the Confluence trash (recoverable); never purges. Refuses a space homepage,
+# a page with children, and a page that is not current.
+
+def _validate_page_delete(flags, pos=()):
+    if pos:
+        raise Fatal(f"page-delete takes no positional arguments: {pos[0]!r}")
+    _check_flags(flags, {"page"}, "page-delete")
+    _one(flags, "page")
+    if "page" not in flags or not PAGE_ID_RE.match(str(flags["page"])):
+        raise Fatal("usage: page-delete --page <page id>")
+    return {"page": str(flags["page"])}
+
+
+def _plan_page_delete(get, args):
+    page = get(f"/pages/{args['page']}", {})
+    if page.get("status") != "current":
+        raise Fatal(f"page {args['page']} is not current (status {page.get('status')!r}); nothing to trash")
+    space_id = str(page.get("spaceId"))
+    if str(get(f"/spaces/{space_id}", {}).get("homepageId")) == args["page"]:
+        raise Fatal(f"page {args['page']} is the homepage of its space; refusing to trash it")
+    if get(f"/pages/{args['page']}/children", {}).get("results"):
+        raise Fatal(f"page {args['page']} has child pages; trash or move them first")
+    version = (page.get("version") or {}).get("number")
+    return {"pageId": str(page.get("id")), "spaceId": space_id, "title": page.get("title", ""),
+            "version": version}, {}
+
+
+def _send_page_delete(http, args, base, body_text):
+    return http("DELETE", f"/pages/{base['pageId']}", None)
+
+
+def _readback_page_delete(get, args, base, body_text, result):
+    try:
+        page = get(f"/pages/{base['pageId']}", {})
+    except HttpError as e:
+        if e.code == 404:
+            return True
+        raise
+    return page.get("status") in ("trashed", "deleted")
+
+
+OPERATIONS["page-delete"] = {"product": "confluence", "validate": _validate_page_delete,
+                             "plan": _plan_page_delete, "send": _send_page_delete,
+                             "readback": _readback_page_delete}
 
 
 
