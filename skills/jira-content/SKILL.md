@@ -33,6 +33,10 @@ cat "${CLAUDE_SKILL_DIR}/templates/bug.md"   # or story.md, task.md, epic.md, su
 
 Ask all gather questions **at once, not one by one**. If the user already provided enough, skip to Step 2.
 
+## Step 1b — Check for existing tickets
+
+Before Step 2 on every create, run the duplicate check in [`../../templates/intake.md`](../../templates/intake.md) and let the user choose when it finds a likely match. When the user names an existing ticket key, skip Step 1 and use the update flow in the same file. The preview in Step 4 is shown for every create and update, the label `test` included.
+
 ## Step 2 — Format the content
 
 Write the body in **Thai** using the matching template. Wording rules for the ticket text are in [`../../templates/writing-rules.md`](../../templates/writing-rules.md). Run its passes on the draft before the preview. **AC format/register/coverage rules are canonical in [`../../templates/acceptance-criteria.md`](../../templates/acceptance-criteria.md) — never restate them, just apply them.**
