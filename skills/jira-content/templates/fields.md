@@ -58,7 +58,7 @@ Two more fields sit on the Bug screen. Both go through `additionalAttributes` an
 | Environment | `additionalAttributes.environment` | an ADF document, not a plain string: `{"type": "doc", "version": 1, "content": [{"type": "paragraph", "content": [{"type": "text", "text": "staging"}]}]}` |
 | Affects versions | `additionalAttributes.versions` | `[{"name": "R2c"}]`; same version list as Fix versions, and the name must exist |
 
-The description holds no environment or version text; these fields do (see `bug.md`).
+Environment is free text in Jira, so there is no dropdown. Offer `production / uat / sit / staging / dev / local` as suggestions and use whatever the user types, unchanged; if the user gives no value, leave it unset. The description holds no environment or version text; these fields do (see `bug.md`).
 
 ## Not supported yet
 

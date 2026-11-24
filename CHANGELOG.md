@@ -8,6 +8,10 @@ Pre-`1.0.0`: breaking changes may land in any `0.x` release.
 This file starts at `0.1.18` — releases before that predate the changelog. See
 `git log` for the full history back to `0.1.0`.
 
+## [0.4.8] — 2026-11-24
+
+- Bug template offers Environment values (production / uat / sit / staging / dev / local) as suggestions; any typed value is kept and skipping leaves it unset.
+
 ## [0.4.7] — 2026-11-24
 **Bug Environment and Affects versions at create.** Both go through `additionalAttributes` (`environment` as an ADF document, `versions` as a name list) and read back as sent on a live APPR Bug. `fields.md` documents them; the ops and jira-content docs no longer send these two through `issue-set` after create.
 

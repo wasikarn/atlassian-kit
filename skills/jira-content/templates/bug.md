@@ -16,7 +16,7 @@ Ask all seven at once. Done when items 1 to 6 each have an answer from the user.
 2. **What happened**: the wrong result as the user saw it (message text, wrong value, status code)
 3. **What should have happened**: the correct result
 4. **How to reproduce**: exact numbered steps
-5. **Where and how often**: environment (prod / staging / local), screen or channel, every time or sometimes (and the condition)
+5. **Where and how often**: environment (offer production / uat / sit / staging / dev / local, or any value the user types; the user may skip it), screen or channel, every time or sometimes (and the condition)
 6. **Impact**: who is affected and how badly (money, data loss, blocked workflow, cosmetic)
 7. **Evidence**: screenshot, log line, error code, trace ID, affected record ID
 
@@ -57,7 +57,7 @@ Write in Thai with this structure. Fill each section from the Step 1 answers onl
 * **ความถี่:** [เกิดทุกครั้ง / เกิดบางครั้ง พร้อมเงื่อนไข]
 * **ช่องทาง/หน้าจอที่เกี่ยวข้อง:** [เช่น แอป Player, หน้า Admin, เว็บไซต์]
 
-> ℹ️ สภาพแวดล้อม (prod/staging/local) และเวอร์ชัน/Build จะบันทึกใน **field ของ Jira โดยตรง** (Environment + Affects versions) ไม่ใส่ในคำอธิบายนี้
+> ℹ️ สภาพแวดล้อม (production/uat/sit/staging/dev/local) และเวอร์ชัน/Build จะบันทึกใน **field ของ Jira โดยตรง** (Environment + Affects versions) ไม่ใส่ในคำอธิบายนี้
 
 ---
 
