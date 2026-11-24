@@ -8,6 +8,12 @@ Pre-`1.0.0`: breaking changes may land in any `0.x` release.
 This file starts at `0.1.18` — releases before that predate the changelog. See
 `git log` for the full history back to `0.1.0`.
 
+## [0.4.24] — 2026-11-24
+
+### Changed
+
+- `acli-reformat.py --apply` also sets the Jira Environment field from an `Env: x` line under Environment, because a Jira form has no Environment field and the ticket would otherwise carry the value only in the description. The preview shows the value first. Verified on a ticket submitted through the APPR Bug form (field set, read back).
+
 ## [0.4.23] — 2026-11-24
 
 ### Added

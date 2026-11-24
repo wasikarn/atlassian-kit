@@ -9,7 +9,7 @@ Usage:
   python3 acli-reformat.py KEY --file view.json   # offline: read a saved view payload
 
 Only text lines that exactly match a known section name become headings, and
-nothing is reordered, added or reworded. A description that already has headings
+nothing is reordered, added or reworded. With --apply, an "Env: x" line under Environment also sets the Jira Environment field. A description that already has headings
 is left alone.
 """
 import json, os, re, subprocess, sys, tempfile
@@ -120,6 +120,19 @@ def reformat(doc):
     return {"type": "doc", "version": 1, "content": out}, found
 
 
+def env_value(doc):
+    """The value of an "Env: ..." bullet under the Environment heading, or None."""
+    for n in doc.get("content", []):
+        if n.get("type") != "bulletList":
+            continue
+        for it in n["content"]:
+            t = it["content"][0]["content"][0].get("text", "")
+            m = re.match(r"^\s*env(ironment)?\s*:\s*(.+)$", t, re.I)
+            if m:
+                return m.group(2).strip()
+    return None
+
+
 def _load(text):
     try:
         return json.loads(text[text.index("{"):])
@@ -153,6 +166,9 @@ def main(argv):
     print("--- " + key + " new description (headings: " + ", ".join(info) + ") ---")
     for n in new["content"]:
         print(render_block(n))
+    env = env_value(new)
+    if env:
+        print("--- Environment field will be set to: " + env + " ---")
     missing = [h for h in TEMPLATE if h not in info]
     if missing:
         print("--- not in the ticket (needs a person to write): " + ", ".join(missing) + " ---")
@@ -165,6 +181,16 @@ def main(argv):
                        capture_output=True, text=True)
     os.unlink(f.name)
     print(r.stdout + r.stderr)
+    if r.returncode or not env:
+        return r.returncode
+    adf = {"type": "doc", "version": 1, "content": [_para(env)]}
+    with tempfile.NamedTemporaryFile("w", suffix=".json", delete=False) as f:
+        json.dump(adf, f)
+    batch = os.path.join(os.path.dirname(os.path.abspath(__file__)), "acli-issue-set-batch.py")
+    r = subprocess.run([sys.executable, batch, "--yes", key, "--", "--environment-adf", f.name],
+                       capture_output=True, text=True)
+    os.unlink(f.name)
+    print(r.stdout[-600:] + r.stderr[-600:])
     return r.returncode
 
 

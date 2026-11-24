@@ -59,4 +59,10 @@ assert rich in d["content"] and rule in d["content"]
 # 5. headings are matched exactly, not by prefix
 assert m.reformat(doc(para("Environment details", "Test Data notes")))[0] is None
 
+# 6. the Env bullet feeds the Environment field; no Env line means None
+d, _ = m.reformat(doc(para("Environment", "Device: x", "Env : sit", "Actual Result", "1. y")))
+assert m.env_value(d) == "sit"
+d, _ = m.reformat(doc(para("Environment", "Device: x", "Actual Result", "1. y")))
+assert m.env_value(d) is None
+
 print("ok: acli-reformat")
