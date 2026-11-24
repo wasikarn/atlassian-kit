@@ -2,7 +2,7 @@
 
 Four shapes for commenting on an existing ticket: status update, QA verification, blocker or question, decision record. They are a starting proposal, not mined from real tickets and not confirmed as a team standard (the [AC format](../../../templates/acceptance-criteria.md) was). Revise them once they have been used in practice.
 
-A trivial one-line comment needs no template; call `acli jira workitem comment create --key KEY-1 --body "..."` directly (see `atlassian-kit:ops`). Use these four when the comment has real structure. Wording rules are in [`README.md`](README.md) § Writing rules: Thai, plain, one idea per line, specific. Run its two passes (item 6) on a structured comment before sending; a one-line comment needs none.
+A trivial one-line comment needs no template; call `acli jira workitem comment create --key KEY-1 --body "..."` directly (see `atlassian-kit:ops`). Use these four when the comment has real structure. Wording rules are in [`writing-rules.md`](../../../templates/writing-rules.md): Thai, plain, one idea per line, specific. Run its passes on a structured comment before sending; a one-line comment needs none.
 
 ## Ground rules
 

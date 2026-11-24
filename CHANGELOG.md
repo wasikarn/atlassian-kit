@@ -8,6 +8,10 @@ Pre-`1.0.0`: breaking changes may land in any `0.x` release.
 This file starts at `0.1.18` — releases before that predate the changelog. See
 `git log` for the full history back to `0.1.0`.
 
+## [0.4.16] — 2026-11-24
+
+- New `templates/writing-rules.md` at the plugin root holds the clarity pass, the AI-marks pass and a dash count, distilled from `siang:technical-writing` and `siang:humanize`, so ticket text gets the same checks on a machine without siang. It replaces README § Writing rules and is shared with `confluence-content`; siang stays an optional extra pass.
+
 ## [0.4.15] — 2026-11-24
 
 - Ticket text now goes through two passes before the preview: `siang:technical-writing`, then `siang:humanize` (README § Writing rules item 6, pointed to from each guided file and from SKILL.md Step 2). It was an optional humanize pass before.

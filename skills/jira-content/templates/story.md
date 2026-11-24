@@ -31,7 +31,7 @@ Ask the optional fields in [`fields.md`](fields.md) in the same message (priorit
 
 ## Step 2: write the description
 
-Write in Thai with this structure. Fill each section from the Step 1 answers only, then run the two passes in [`README.md`](README.md) § Writing rules item 6. Done when no `[ ]` placeholder is left, every AC has all three bullets, and there are at least 3 ACs (happy path, error or edge, regression or permission).
+Write in Thai with this structure. Fill each section from the Step 1 answers only, then run the passes in [`writing-rules.md`](../../../templates/writing-rules.md). Done when no `[ ]` placeholder is left, every AC has all three bullets, and there are at least 3 ACs (happy path, error or edge, regression or permission).
 
 ```
 ## 🎯 เหตุผลทางธุรกิจ (ทำไมต้องทำ)

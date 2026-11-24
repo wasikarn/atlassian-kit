@@ -74,7 +74,8 @@ search. This is research, not authoring — any actual Jira write still routes t
 Write the body in **Thai** using `templates/confluence-spec.md`. **Acceptance Criteria
 format/register/coverage rules are canonical in one place —
 [`../../templates/acceptance-criteria.md`](../../templates/acceptance-criteria.md) — never restate
-them here, just apply them.**
+them here, just apply them.** Wording rules for the page text are in
+[`../../templates/writing-rules.md`](../../templates/writing-rules.md); run its passes before the preview.
 
 ⚠️ This template is a **starting proposal**, adapted from the Story template — not mined from real
 Confluence usage or confirmed as a Head-of-Engineering standard. Revise once used in practice.

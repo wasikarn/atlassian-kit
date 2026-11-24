@@ -36,7 +36,7 @@ python3 skills/ops/scripts/md2adf.py somefile.md | python3 skills/ops/scripts/ad
   installed, the test suite fails until `~/.claude/hooks/acli-guard.py` and the
   `~/.claude/settings.json` acli-guard entry both exist and match.
 - `templates/acceptance-criteria.md` — the one rule both content skills share; referenced, never
-  copied (copies drifted across 5+ files before).
+  copied (copies drifted across 5+ files before). `templates/writing-rules.md` is the same for wording.
 - Scripts: `md2adf.py` (Markdown subset → ADF; nested lists flattened by design, see
   `skills/ops/ISSUES.md` Issue 1), `adf2md.py` (inverse; takes an ADF doc, a view payload as a
   dict or a list of them, or a create payload; owns `read_json`), `acli-edit.py` (section-level
