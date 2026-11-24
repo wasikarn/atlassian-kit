@@ -8,6 +8,10 @@ Pre-`1.0.0`: breaking changes may land in any `0.x` release.
 This file starts at `0.1.18` — releases before that predate the changelog. See
 `git log` for the full history back to `0.1.0`.
 
+## [0.4.13] — 2026-11-24
+
+- fields.md § Dependencies: `link create --out A --in B --type Blocks` verified live on APPR (A blocks B, both sides read back); the untested-direction caveat is gone.
+
 ## [0.4.12] — 2026-11-24
 
 - Epic, Story and Task templates add questions backed by Atlassian's own docs: Epic asks which goal, OKR or initiative it rolls up to and checks that the work is weeks or more; Story asks for sub-tasks with owners, checks that it fits one sprint, and both Story and Task ask for dependencies, which `fields.md` § Dependencies records as issue links after create.

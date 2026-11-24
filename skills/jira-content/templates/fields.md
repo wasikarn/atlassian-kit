@@ -65,10 +65,10 @@ Environment is free text in Jira, so there is no dropdown. Offer `production / u
 Jira records a dependency as an issue link (blocks, is blocked by, relates to, duplicates, clones), not as description text. The create payload has no link field, so create the ticket first, then link it:
 
 ```bash
-acli jira workitem link create --out KEY-1 --in KEY-2 --type Blocks
+acli jira workitem link create --out KEY-1 --in KEY-2 --type Blocks --yes
 ```
 
-This is a write: show the pair, the direction and the type, and run it only after the user confirms. The direction of `--out` and `--in` was not tested here.
+`--out` is the ticket that blocks and `--in` is the ticket that is blocked: the example makes KEY-1 block KEY-2. Verified live on APPR (2026-11-24): KEY-1 then lists KEY-2 under `blocks`, and KEY-2 lists KEY-1 as `is blocked by`. Other types (`Relates`, `Duplicate`, `Cloners`) were not tested; read the type names from the site's link types before using one. This is a write: show the pair, the direction and the type, and run it only after the user confirms.
 
 ## Not supported yet
 
