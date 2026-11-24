@@ -1,8 +1,9 @@
 # atlassian-kit
 
-An acli-first Jira/Confluence toolkit for Claude Code: bulk work-item ops via JQL,
-ADF↔markdown conversion, and template-conforming content authoring for both Jira
-issues and Confluence pages.
+An Atlassian toolkit for Claude Code covering Jira and Confluence: acli for search and bulk ops via JQL,
+REST plan/apply scripts for what acli cannot do (versions, filters, boards, Confluence pages and
+attachments), ADF↔markdown conversion, and template-conforming content authoring for Jira issues
+and Confluence pages.
 
 Extracted from [kbg-harness](https://github.com/wasikarn/kbg-harness) — it started as
 skills inside a general engineering harness and moved out here to stand on its own.

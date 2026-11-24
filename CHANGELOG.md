@@ -1,12 +1,27 @@
 # Changelog
 
-All notable changes to `jira-acli` are documented here. Format loosely follows
+All notable changes to `atlassian-kit` (formerly `jira-acli`) are documented here. Format loosely follows
 [Keep a Changelog](https://keepachangelog.com/); versions follow [SemVer](https://semver.org/).
 
 Pre-`1.0.0`: breaking changes may land in any `0.x` release.
 
 This file starts at `0.1.18` — releases before that predate the changelog. See
 `git log` for the full history back to `0.1.0`.
+
+## [0.2.0] — 2026-11-24
+**Renamed to `atlassian-kit`; the `acli` skill is now `ops`; the REST write script is split.** The plugin covers Jira,
+Confluence, acli and REST, so the name no longer says only Jira and acli.
+- Plugin `jira-acli` → `atlassian-kit`: install as `atlassian-kit@wasikarn`; skills are `atlassian-kit:ops`,
+  `atlassian-kit:jira-content`, `atlassian-kit:confluence-content`; agents `atlassian-kit:jira-expert` and
+  `atlassian-kit:confluence-expert`. Breaking: the old `jira-acli:*` names stop resolving after the update.
+- `skills/acli` → `skills/ops`. Script file names are unchanged (`acli-rest-get.py`, `acli-rest-write.py`,
+  `acli-*.sh`), because `hooks/acli-guard.py` matches them.
+- `acli-rest-write.py` (1,258 lines) is now the plan/apply entry (254 lines); operations moved to
+  `rest_ops_confluence.py`, `rest_ops_jira_issues.py`, `rest_ops_jira_boards.py` over `rest_write_base.py`. Behaviour and
+  the 14 operations are unchanged; tests 117/117.
+- Since 0.1.75 (no entries were written): `issue-set --parent/--priority`, batch `acli-issue-set-batch.py`,
+  `issue-delete`, `filter-create` (prints the filter id), `board-columns-set` (internal greenhopper API; applied on
+  one board), `board-delete`, `board-property-set`, and board reads in `acli-rest-get.py api`.
 
 ## [0.1.75] — 2026-11-20
 **`attachment-upload` operation.** `acli-rest-write.py plan attachment-upload --page <id> --file <image> [--name N]`

@@ -17,8 +17,8 @@ python3 skills/ops/scripts/md2adf.py somefile.md | python3 skills/ops/scripts/ad
 
 ## Layout
 
-- `skills/ops` — the mechanical tool (search, view, edit, transition, bulk, Confluence, auth,
-  ADF↔Markdown). `skills/jira-content` — Jira templates (Bug/Story/Task/Epic/Sub-task, comments).
+- `skills/ops` — the mechanical tools (acli: search, view, edit, transition, bulk, Confluence, auth; REST plan/apply
+  writes; ADF↔Markdown). `skills/jira-content` — Jira templates (Bug/Story/Task/Epic/Sub-task, comments).
   `skills/confluence-content` — Spec/PRD template plus `scripts/inject-mermaid-macros.py`.
 - `agents/jira-expert.md`, `agents/confluence-expert.md` — preview-then-stop subagents: they hold
   no MCP tools and never fire a mutating acli command; they return the exact command for the main
@@ -40,9 +40,11 @@ python3 skills/ops/scripts/md2adf.py somefile.md | python3 skills/ops/scripts/ad
   (normalized search table, unwraps every search shape acli has emitted), `acli-rest-get.py`
   (GET-only Jira REST lookups acli lacks: transitions, find-user, createmeta, plus a raw
   `api <jira|confluence> <PATH>` read with each product's token; token from the
-  mode-600 `~/.claude/atlassian.env`), `acli-rest-write.py` (plan/apply writes; registers
-  Confluence `page-create`/`page-fetch`/`page-update` (base-file + hash flow,
-  node-loss gate)/`page-delete` (to the trash, never purge)/`attachment-upload` (one image, v1 multipart, own classic token `ACLI_REST_WRITE_CONFLUENCE_FILE_TOKEN` with only `write:confluence-file`) and Jira `issue-set`/`version-create`/`version-edit`/`version-delete`; write tokens from the same file).
+  mode-600 `~/.claude/atlassian.env`), `acli-rest-write.py` (plan/apply entry: flags, target check, request file, confirm hash, apply with read-back; the
+  operations live beside it: `rest_ops_confluence.py` (page-create/fetch/update/delete, attachment-upload),
+  `rest_ops_jira_issues.py` (issue-set, issue-delete, version-create/edit/delete), `rest_ops_jira_boards.py`
+  (filter-create, board-columns-set, board-delete, board-property-set), over the shared registry in
+  `rest_write_base.py`; a new operation is a new entry in one of them; write tokens from the same file).
   Wrappers: `acli-new.sh` (create from Markdown), `acli-set-desc.sh` (replace the whole
   description), `acli-edit.sh` (runs `acli-edit.py`), `acli-assign.sh` (assign by accountId via
   `edit --from-json`), `acli-ls.sh` (runs `acli-ls.py`). The four write wrappers source
@@ -61,8 +63,8 @@ python3 skills/ops/scripts/md2adf.py somefile.md | python3 skills/ops/scripts/ad
   `adf2md.py` first. Replicate in any new writing script.
 - **acli first, Atlassian MCP only for the gaps listed in `skills/ops/SKILL.md` § "When acli
   can't"** (page create/update are MCP-only). Update that list before using MCP elsewhere.
-- **Cross-skill coupling:** `jira-content` wraps `acli` scripts via `../../..` climbs; an ADF or
-  script-interface change in `acli` must be checked there. New wrappers resolve their dir with
+- **Cross-skill coupling:** `jira-content` wraps `ops` scripts via `../../..` climbs; an ADF or
+  script-interface change in `ops` must be checked there. New wrappers resolve their dir with
   `BASH_SOURCE[0]`, not `dirname "$0"`.
 
 ## Agent skills

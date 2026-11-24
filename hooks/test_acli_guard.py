@@ -53,6 +53,7 @@ def test_corpus_tool_calls_subagent_decisions():
 MAIN_THREAD = [
     ("ask", "acli jira workitem assign --key PROJ-558 --assignee @me"),
     ("ask", "bash skills/acli/scripts/acli-edit.sh PROJ-1 d.md"),
+    ("ask", "bash skills/ops/scripts/acli-edit.sh PROJ-1 d.md"),
     ("ask", 'acli feedback -s "bug" -d "details"'),
     ("ask", "python3 acli-rest-write.py plan page-create --space APPR --title T --body-adf b.json"),
     ("ask", "cd /tmp && acli jira workitem edit --from-json p.json --yes"),

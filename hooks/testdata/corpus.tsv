@@ -98,3 +98,5 @@ deny	rest-write-plan	python3 skills/acli/scripts/acli-rest-write.py plan issue-s
 deny	rest-write-apply	python3 acli-rest-write.py apply request.json --confirm abcdef123456
 allow	rest-get-read	python3 skills/acli/scripts/acli-rest-get.py transitions APPR-1
 deny	over-block-rg-mention-rest-write	rg -n "rest" skills/acli/scripts/acli-rest-write.py
+allow	must	git -C /work/atlassian-kit log --oneline -5
+deny	accepted	git -C /work/atlassian-kit diff -- skills/ops/scripts/acli-edit.sh

@@ -20,6 +20,7 @@ HERE = Path(__file__).resolve().parent
 sys.path.insert(0, str(HERE))
 spec = importlib.util.spec_from_file_location("acli_rest_write", HERE / "acli-rest-write.py")
 assert spec and spec.loader
+import rest_ops_jira_issues  # noqa: E402  (HERE is on sys.path above)
 rw = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(rw)
 
@@ -999,7 +1000,7 @@ def test_a_single_value_flag_given_twice_is_fatal():
     flags, _ = rw.parse_flags(["--key", "DEMO-1", "--key", "DEMO-2"])
     assert flags["key"] == ["DEMO-1", "DEMO-2"]
     try:
-        rw._validate_issue_set(flags, ())
+        rest_ops_jira_issues._validate_issue_set(flags, ())
     except rw.Fatal as e:
         assert "--key" in str(e) and "once" in str(e)
     else:

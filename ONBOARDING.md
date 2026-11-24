@@ -19,7 +19,7 @@ Top MCP Servers:
 ## Your Setup Checklist
 
 ### Codebases
-- [ ] atlassian-kit — github.com/wasikarn/atlassian-kit (this repo: the acli-first Jira/Confluence toolkit plugin)
+- [ ] atlassian-kit — github.com/wasikarn/atlassian-kit (this repo: the Atlassian toolkit plugin: acli, REST plan/apply, Jira and Confluence content)
 
 ### MCP Servers to Activate
 - [ ] _None required._ This repo works through the `acli` CLI plus the REST helper scripts in

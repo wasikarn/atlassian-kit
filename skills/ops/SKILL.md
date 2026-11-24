@@ -1,6 +1,6 @@
 ---
 name: ops
-description: "Mechanical driver for the acli CLI — a backend tool, not a content-authoring skill (same role as the Atlassian MCP): search, view, edit, transition, comment, link, clone, bulk ops via JQL, Confluence/admin ops, auth, and ADF↔markdown conversion. Use this skill directly only for mechanical/query/bulk/transition work with no template shape to get right."
+description: "Mechanical driver for the acli CLI and this plugin's REST plan/apply scripts (versions, filters, boards, Confluence pages and attachments) — a backend tool, not a content-authoring skill (same role as the Atlassian MCP): search, view, edit, transition, comment, link, clone, bulk ops via JQL, Confluence/admin ops, auth, and ADF↔markdown conversion. Use this skill directly only for mechanical/query/bulk/transition work with no template shape to get right."
 when_to_use: "Thai: 'ย้ายสถานะหลายตัว', 'export JQL', 'ย้าย ticket ไป Done'. For creating or editing the *content* of a Bug/Story/Task/Epic/Sub-task or a templated comment, use atlassian-kit:jira-content instead; for a Confluence page/spec/PRD, use atlassian-kit:confluence-content instead — each owns its product's template standard and calls into this skill's commands to execute. Don't use for non-Atlassian trackers or global CLI config."
 ---
 
