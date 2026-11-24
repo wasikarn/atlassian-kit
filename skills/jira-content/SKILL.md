@@ -20,23 +20,22 @@ Create or edit the **content** of a Jira Bug/Story/Task/Epic/Sub-task, or a temp
 
 | What | Template | Gather |
 |---|---|---|
-| Bug | `templates/bug.md` | Guided — ask its gather questions |
-| Story | `templates/story.md` | Guided — ask its gather questions |
-| Task | `templates/task.payload.json` | No guided script — fields in `templates/README.md` § Task |
-| Epic | `templates/epic.payload.json` | Same — `templates/README.md` § Epic |
-| Sub-task | `templates/subtask.payload.json` | Same — `templates/README.md` § Sub-task; needs a parent key |
+| Bug | `templates/bug.md` | Guided: ask its gather questions |
+| Story | `templates/story.md` | Guided: ask its gather questions |
+| Task | `templates/task.md` | Guided: ask its gather questions |
+| Epic | `templates/epic.md` | Guided: ask its gather questions |
+| Sub-task | `templates/subtask.md` | Guided: ask its gather questions; needs a parent key |
 | Templated comment | `templates/comments.md` | Ask which of the 4 (status/QA/blocker/decision), then its fields |
 
 ```bash
-cat "${CLAUDE_SKILL_DIR}/templates/bug.md"          # or story.md / comments.md
-cat "${CLAUDE_SKILL_DIR}/templates/task.payload.json"   # Task/Epic/Sub-task: payload directly
+cat "${CLAUDE_SKILL_DIR}/templates/bug.md"   # or story.md, task.md, epic.md, subtask.md, comments.md
 ```
 
 Ask all gather questions **at once, not one by one**. If the user already provided enough, skip to Step 2.
 
 ## Step 2 — Format the content
 
-Write the body in **Thai** using the matching template. **AC format/register/coverage rules are canonical in [`../../templates/acceptance-criteria.md`](../../templates/acceptance-criteria.md) — never restate them, just apply them.**
+Write the body in **Thai** using the matching template. Wording rules for the ticket text are in [`templates/README.md`](templates/README.md) § Writing rules. **AC format/register/coverage rules are canonical in [`../../templates/acceptance-criteria.md`](../../templates/acceptance-criteria.md) — never restate them, just apply them.**
 
 ## Step 3 — Resolve issue metadata
 
@@ -174,7 +173,7 @@ acli jira workitem comment update --key KEY --id <commentId> --body-adf /tmp/not
 
 - **Required (Bug):** Thai summary, actual behavior, expected behavior, numbered repro steps, impact, environment.
 - **Required (Story):** Thai summary, business reason, desired behavior, in/out scope, AC.
-- **Required (Task/Epic/Sub-task):** summary, context/goal, scope, AC per `templates/README.md`; Sub-task also needs a parent.
+- **Required (Task/Epic/Sub-task):** the sections `templates/README.md` § Sections by type marks `always`; Sub-task also needs a parent.
 - **Required (templated comment):** which of the 4 templates, and its fields.
 - **Optional:** evidence (Bug), affected version (Bug), PO decision points (Story), explicit project key (defaults `PROJ`), explicit assignee.
 - **Tooling:** prefers `acli` when installed + authed; falls back to Atlassian MCP. If neither, ask the user to run `acli jira auth login` or enable the Atlassian MCP.

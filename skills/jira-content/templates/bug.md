@@ -1,85 +1,96 @@
-# Bug — type-specific guide
+# Bug: gather questions and Thai description
 
-Loaded by `atlassian-kit:jira-content` Step 1–2. The shared metadata table, preview gate, and create commands live in `SKILL.md`; AC rules live in [`acceptance-criteria.md`](../../../templates/acceptance-criteria.md) — this file holds only the Bug-specific gather questions and Thai description template.
+Loaded by `atlassian-kit:jira-content` Steps 1 and 2. The shared metadata table, preview gate and create commands live in `SKILL.md`. Other rules are defined once, elsewhere:
 
-## Step 1 — Gather (Bug)
+- AC format, register and coverage: [`acceptance-criteria.md`](../../../templates/acceptance-criteria.md)
+- Title: [`title-conventions.md`](title-conventions.md)
+- Wording of the ticket text: [`README.md`](README.md) § Writing rules
 
-Ask the user (all at once, not one by one):
+This file holds only the Bug questions and the Thai description.
 
-1. **Bug summary** — short Thai title, symptom-oriented (e.g. "ยอดคงเหลือไม่ถูกหักหลังลูกค้ายืนยันการสั่งซื้อ") — full rule + anti-patterns: [`title-conventions.md`](title-conventions.md)
-2. **What happened?** — observed wrong behavior (actual result)
-3. **What should have happened?** — correct expected behavior
-4. **How to reproduce?** — exact numbered steps
-5. **Where / how often?** — environment (prod / staging / local), channel/screen, frequency
-6. **Impact** — who is affected and how serious (money / data loss / blocked workflow / cosmetic)
-7. **Evidence** — screenshots, log lines, error codes, trace IDs, affected record IDs (optional)
+## Step 1: gather
 
-If the user already provided enough context, skip to Step 2.
+Ask all seven at once. Done when items 1 to 6 each have an answer from the user. If the user cannot answer one, write `ไม่ทราบ` in that section; a guess is never an answer. Item 7 may be empty.
 
-## Step 2 — Format the issue (Bug)
+1. **Bug summary**: a short Thai title naming the symptom, e.g. "ยอดคงเหลือไม่ถูกหักหลังลูกค้ายืนยันการสั่งซื้อ"
+2. **What happened**: the wrong result as the user saw it (message text, wrong value, status code)
+3. **What should have happened**: the correct result
+4. **How to reproduce**: exact numbered steps
+5. **Where and how often**: environment (prod / staging / local), screen or channel, every time or sometimes (and the condition)
+6. **Impact**: who is affected and how badly (money, data loss, blocked workflow, cosmetic)
+7. **Evidence**: screenshot, log line, error code, trace ID, affected record ID
 
-Write the description in **Thai** using this structure:
+If the user's first message already answers items 1 to 6, go straight to Step 2.
+
+## Step 2: write the description
+
+Write in Thai with this structure. Fill each section from the Step 1 answers only. Done when no `[ ]` placeholder is left, every AC has all three bullets, and there are at least 2 ACs (fix verified, regression).
 
 ```
 ## 🐞 อาการที่พบ (สิ่งที่เกิดขึ้นจริง)
 
-[What actually happens — 2-3 sentences.]
+[2-3 ประโยค: หน้าจอหรือ API ตอบอะไร ค่าที่ผิดคืออะไร]
 
 ---
 
 ## ✅ สิ่งที่ควรเป็น (ผลลัพธ์ที่ถูกต้อง)
 
-[What the system should do instead.]
+[ระบบควรทำอะไรแทน]
 
 ---
 
 ## 🔁 ขั้นตอนการเกิดปัญหา (Steps to Reproduce)
 
-1. [step]
-2. [step]
-3. [step]
+1. [ขั้นตอน]
+2. [ขั้นตอน]
+3. [ขั้นตอน]
 
-> 📌 ผลลัพธ์ที่ได้: [actual]
-> 📌 ผลลัพธ์ที่คาดหวัง: [expected]
+> 📌 ผลลัพธ์ที่ได้: [ค่าหรือข้อความที่เห็นจริง]
+> 📌 ผลลัพธ์ที่คาดหวัง: [ค่าหรือข้อความที่ควรเห็น]
 
 ---
 
 ## 🌐 ความถี่และเงื่อนไข
 
-* **ความถี่:** [เกิดทุกครั้ง / เกิดบางครั้ง — ระบุเงื่อนไข]
+* **ความถี่:** [เกิดทุกครั้ง / เกิดบางครั้ง พร้อมเงื่อนไข]
 * **ช่องทาง/หน้าจอที่เกี่ยวข้อง:** [เช่น แอป Player, หน้า Admin, เว็บไซต์]
 
-> ℹ️ สภาพแวดล้อม (prod/staging/local) และเวอร์ชัน/Build จะถูกบันทึกใน **field ของ Jira โดยตรง** (Environment + Affects versions) ไม่ใช่ในคำอธิบายนี้
+> ℹ️ สภาพแวดล้อม (prod/staging/local) และเวอร์ชัน/Build จะบันทึกใน **field ของ Jira โดยตรง** (Environment + Affects versions) ไม่ใส่ในคำอธิบายนี้
 
 ---
 
 ## 💥 ผลกระทบ (Impact)
 
-[Who is affected and how serious.]
+[ใครได้รับผลกระทบ รุนแรงแค่ไหน ใส่จำนวนหรือยอดเงินถ้ามี]
 
 ---
 
 ## 📎 หลักฐานประกอบ (Evidence)
 
-[Screenshots, logs, error codes, trace IDs. Omit if none.]
+[screenshot, log, error code, trace ID ลบทั้ง section ถ้าไม่มี]
 
 ---
 
-## 🧪 เกณฑ์การยอมรับการแก้ไข (Acceptance Criteria) — สำหรับ QA
+## 🧪 เกณฑ์การยอมรับการแก้ไข (Acceptance Criteria) สำหรับ QA
 
 **AC1 — ยืนยันว่าแก้แล้ว (Fix verified)**
 
-* กำหนดให้: [precondition that previously triggered the bug]
-* เมื่อ: [the reproduction action]
-* ผลลัพธ์: [the now-correct expected outcome — be specific]
+* กำหนดให้: [สถานะที่เคยทำให้เกิดบั๊ก]
+* เมื่อ: [การกระทำที่เคยทำให้เกิดบั๊ก]
+* ผลลัพธ์: [ผลที่ถูกต้องตอนนี้ ระบุให้เจาะจง]
 
 **AC2 — ตรวจ Regression**
 
-* กำหนดให้: [an unaffected precondition/flow]
-* เมื่อ: [the normal action]
-* ผลลัพธ์: ทำงานแบบเดิม ไม่ได้รับผลกระทบจากการแก้ไขรอบนี้
+* กำหนดให้: [สถานะหรือ flow ที่ไม่เกี่ยวกับบั๊ก]
+* เมื่อ: [การกระทำปกติ]
+* ผลลัพธ์: ทำงานเหมือนเดิม ไม่ได้รับผลกระทบจากการแก้รอบนี้
 ```
 
-**AC format/register/coverage rules:** [`acceptance-criteria.md`](../../../templates/acceptance-criteria.md) — single source, don't restate.
+The Thai section headings and their emoji are the team's required shape; keep them as written.
 
-Then proceed to `SKILL.md` Step 3 (metadata — Bug uses `Bug` issue type, severity-derived priority, and the Bug-only Environment + Affects versions rows) → Step 4 (preview) → Step 5 (create).
+Weak and strong versions of the first section:
+
+- Weak: "ระบบทำงานผิดพลาดตอนสั่งซื้อ ทำให้ผู้ใช้ได้รับผลกระทบ"
+- Strong: "หลังลูกค้ากดยืนยันสั่งซื้อ 200 บาท หน้าจอขึ้น 'สำเร็จ' แต่ยอดคงเหลือยังเป็น 500 บาท"
+
+Next: `SKILL.md` Step 3 (metadata: issue type `Bug`, priority from severity, plus the Bug-only Environment and Affects versions), then Step 4 (preview) and Step 5 (create).

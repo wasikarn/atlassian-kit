@@ -1,45 +1,32 @@
-# Title / Summary conventions — shared across Bug/Story/Task/Epic/Sub-task
+# Title conventions
 
-Referenced by every `jira-content` template's Step 1 gather question and every `*.payload.json`'s
-`summary` field. Edit here, not per-template — same consolidation reasoning as
-[`acceptance-criteria.md`](../../../templates/acceptance-criteria.md): the old scattered-copies setup let rules drift
-out of sync, so cross-cutting rules live once, referenced everywhere.
+The summary rule for all five types. Every guided template's gather questions and every `*.payload.json`'s `summary` field point here; edit the rule here, not per template. (Scattered copies drifted before, which is why [`acceptance-criteria.md`](../../../templates/acceptance-criteria.md) is also single-source.)
 
-**Grounded in:** Atlassian's own [bug-report template](https://www.atlassian.com/software/jira/templates/bug-report)
-guidance ("the summary can be as short as a few words as long as it makes it easy for team members
-to identify the bug") and the general issue-title best-practice consensus (imperative-verb lead for
-work items, behavior/user-focused phrasing for user-facing issues, skimmable in a backlog list
-without opening the ticket, acts as a memory aid for the reader).
+Grounded in Atlassian's [bug-report template](https://www.atlassian.com/software/jira/templates/bug-report) ("as short as a few words as long as it makes it easy for team members to identify the bug") and common issue-title practice: imperative verb for work items, behavior-focused wording for user-facing issues, readable in a backlog list without opening the ticket.
 
 ## Rules for every type
 
-- **Thai, one line, no trailing period.** Same register as the description body.
-- **Skimmable without opening the ticket.** Someone scanning a backlog list should know what the
-  ticket is about from the title alone.
-- **State WHAT, not WHY-we-noticed-it or HOW-we'll-fix-it.** Root cause and fix approach belong in
-  the description (Evidence / Technical Notes), not the title — a title front-loaded with a
-  diagnosis reads wrong the moment the real cause turns out different, and then needs a rename.
-- **No `[Area]` bracket prefix by default.** `labels` already carries the domain/area tag (see
-  `SKILL.md` Step 3 — bug gets `bug` + 1-2 domain tags, others get 1-2 domain tags) — a bracket
-  prefix in the title duplicates that field for no gain. Skip it unless the team can't filter or
-  group by label in their list view. **Exception: Sub-task** — its bracket carries the **parent
-  key**, not an area, which is not covered by any other field; see the table below.
-- **One ticket, one title.** If the title needs "และ"/"กับ" to describe it, it's two tickets.
+- Thai, one line, no trailing period, same register as the description.
+- A reader scanning the backlog knows what the ticket is about from the title alone.
+- The title states what, not how it was noticed or how it will be fixed. Root cause and fix go in the description (Evidence, Technical Notes); a title that leads with a diagnosis needs a rename when the real cause turns out different.
+- No `[Area]` bracket by default. `labels` already carries the domain tag (`SKILL.md` Step 3), so a bracket duplicates it. Add one only when the team cannot filter or group by label in their list view. Sub-task is the exception: its bracket holds the parent key, which no other field carries.
+- One ticket, one title. A title that needs "และ" or "กับ" describes two tickets.
 
-## Per-type pattern
+Done when the title passes each line above.
+
+## Pattern by type
 
 | Type | Pattern | Example |
 |---|---|---|
-| Bug | Symptom, behavior-focused, present tense — what's observably wrong | "ยอดคงเหลือไม่ถูกหักหลังลูกค้ายืนยันการสั่งซื้อ" |
+| Bug | Observable symptom, present tense | "ยอดคงเหลือไม่ถูกหักหลังลูกค้ายืนยันการสั่งซื้อ" |
 | Story | The outcome the user gets once shipped | "หักยอดคงเหลือตอนลูกค้ายืนยันการสั่งซื้อ" |
-| Task | Imperative verb + concrete object — describes the work, not the user value | "เพิ่ม index ตาราง orders ให้ query ยืนยันคำสั่งซื้อ" |
-| Epic | Noun-phrase naming the initiative — broader in scope than a single fix | "ระบบคิดค่าบริการแบบ Traffic-based สำหรับ Campaign" |
-| Sub-task | `[PARENT-KEY] ` + imperative + a slice narrow enough to tell apart from sibling sub-tasks | "[PROJ-809] เขียน migration เพิ่มคอลัมน์ display_time_id" |
+| Task | Imperative verb plus concrete object; describes the work, not the user value | "เพิ่ม index ตาราง orders ให้ query ยืนยันคำสั่งซื้อ" |
+| Epic | Noun phrase naming the initiative, broader than one fix | "ระบบคิดค่าบริการแบบ Traffic-based สำหรับ Campaign" |
+| Sub-task | `[PARENT-KEY] ` plus imperative plus a slice that differs from its siblings | "[PROJ-809] เขียน migration เพิ่มคอลัมน์ display_time_id" |
 
 ## Anti-patterns
 
-- **Vague:** "บั๊กหน้า login" — a bug about what, exactly, on that page?
-- **Diagnosis-in-title:** "เพราะ null pointer ตอน settle" — that's the root cause, which belongs in
-  the description's Evidence section, not the symptom the title should carry.
-- **Multi-issue:** "แก้ settlement + เพิ่ม logging + refactor retry" — split into 3 tickets.
-- **Redundant with nothing:** "Bug in payment" — a scanner gains nothing actionable from it.
+- Vague: "บั๊กหน้า login". Which bug, on which step?
+- Diagnosis in the title: "เพราะ null pointer ตอน settle". That is the cause, so it belongs in Evidence.
+- Several issues: "แก้ settlement + เพิ่ม logging + refactor retry". Split into 3 tickets.
+- Empty: "Bug in payment". A scanner learns nothing they can act on.

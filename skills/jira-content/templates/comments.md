@@ -1,82 +1,73 @@
-# Comment templates (status update / QA verification / blocker / decision record)
+# Comment templates
 
-⚠️ Unlike the work-item templates (each derived from real PROJ tickets), these four are a
-**starting proposal**, not mined from real usage or confirmed as a Head-of-Engineering standard —
-the [Acceptance Criteria format](../../../templates/acceptance-criteria.md) was explicitly confirmed team-wide, this
-wasn't. Revise once used in practice.
+Four shapes for commenting on an existing ticket: status update, QA verification, blocker or question, decision record. They are a starting proposal, not mined from real tickets and not confirmed as a team standard (the [AC format](../../../templates/acceptance-criteria.md) was). Revise them once they have been used in practice.
 
-Four templates for commenting on an *existing* ticket — not a new ticket's description, so no
-headings-and-sections overhead, just the purpose the comment serves. Same wording rules as the
-work-item templates: Thai, plain, one idea per line, no vague language.
+A trivial one-line comment needs no template; call `acli jira workitem comment create --key KEY-1 --body "..."` directly (see `atlassian-kit:ops`). Use these four when the comment has real structure. Wording rules are in [`README.md`](README.md) § Writing rules: Thai, plain, one idea per line, specific.
 
-A **trivial one-line comment** doesn't need a template — just call `acli jira workitem comment
-create --key KEY-1 --body "..."` directly (see `atlassian-kit:ops`). These four are for a comment
-that has real structure to it.
+## Ground rules
 
-**Ground rules (why these four shapes, not free-form comments):**
+1. A comment is a log entry, not the source of truth. When a decision record changes scope, AC or the description's facts, edit the description too (`acli-edit.sh` or `acli-set-desc.sh`; see `SKILL.md` § Editing an existing Jira issue's description). A comment that redefines the ticket while the description stays stale is the drift these templates exist to prevent.
+2. Every comment ends with what happens next. A status update without "ขั้นตอนถัดไป" gives nobody an action.
+3. Dates: write one when it is known and leave the field blank when it is not. A guessed date is never filled in (the `atlassian-kit:ops` rule: fail loud, never invent a value).
 
-- **A comment is a log entry, not the source of truth.** If a decision record changes scope, AC,
-  or the description's own facts, that change belongs in the description too — edit it via
-  `acli-edit.sh`/`acli-set-desc.sh` (see `SKILL.md` § Editing an existing Jira issue's
-  description). A comment that quietly redefines what the ticket means, with the description left
-  stale, is the exact drift these templates exist to prevent.
-- **Every comment should leave the reader knowing what happens next**, not just what happened —
-  a status update without "ขั้นตอนถัดไป" is a log entry no one can act on.
-- **No unresolved dates.** "คาดว่าจะเสร็จ" and any other date field: state it if known, leave it
-  blank if not — never guess a date to fill the field (see `atlassian-kit:ops`'s METHODOLOGY: fail
-  loud, never silently drop or invent a value).
+## Sending
 
-Send any of these through the comment ADF pipeline — `comment create` and `comment update` take
-ADF differently, don't assume they match (see `atlassian-kit:ops` § Description format):
+Comments go through the comment ADF pipeline. `comment create` and `comment update` take ADF differently (see `atlassian-kit:ops` § Description format).
 
 ```bash
-bash "${CLAUDE_SKILL_DIR}/scripts/md2adf.sh" note.md > /tmp/note.json   # bare doc mode — no -s/-p/-t
+bash "${CLAUDE_SKILL_DIR}/scripts/md2adf.sh" note.md > /tmp/note.json   # bare doc mode, no -s/-p/-t
 acli jira workitem comment create --key KEY-1 --body-file /tmp/note.json
 ```
 
-### สถานะความคืบหน้า (Status update)
+Pick the shape from what the user wants to say, then ask only for that shape's fields. Done when no `[ ]` placeholder is left.
+
+## สถานะความคืบหน้า (status update)
+
+Say what happened in the work, not the team's internal steps.
 
 ```
 ## 📌 ความคืบหน้า
 
-[สิ่งที่ทำไปแล้ว — พูดถึงสิ่งที่เกิดขึ้น ไม่ใช่ขั้นตอนภายในทีม]
+[สิ่งที่ทำเสร็จแล้ว ระบุสิ่งที่เปลี่ยนจริง]
 
 **ขั้นตอนถัดไป:** [สิ่งที่จะทำต่อ]
-**คาดว่าจะเสร็จ:** [วันที่ ถ้าทราบ — ไม่ทราบให้เว้นว่าง อย่าเดา]
+**คาดว่าจะเสร็จ:** [วันที่ ถ้าทราบ ไม่ทราบให้เว้นว่าง]
 ```
 
-### ผลตรวจ QA (QA verification)
+## ผลตรวจ QA (QA verification)
 
-Reference the same `AC#` numbering as the ticket's own [Acceptance Criteria](../../../templates/acceptance-criteria.md)
-— a QA comment should trace back to the exact AC it verifies, not read as a free-form retest
-summary.
+Use the same `AC#` numbering as the ticket's own [Acceptance Criteria](../../../templates/acceptance-criteria.md), so each result traces to the AC it checks. Write one line per AC.
 
 ```
 ## 🧪 ผลตรวจ QA
 
-* AC1 — [ชื่อ AC]: ✅ ผ่าน / ❌ ไม่ผ่าน — [หมายเหตุถ้าไม่ผ่าน]
-* AC2 — [ชื่อ AC]: ✅ ผ่าน / ❌ ไม่ผ่าน — [หมายเหตุถ้าไม่ผ่าน]
+* AC1 — [ชื่อ AC]: ✅ ผ่าน / ❌ ไม่ผ่าน [สิ่งที่เห็นจริง ถ้าไม่ผ่าน]
+* AC2 — [ชื่อ AC]: ✅ ผ่าน / ❌ ไม่ผ่าน [สิ่งที่เห็นจริง ถ้าไม่ผ่าน]
 
 **สรุป:** [ผ่านทั้งหมด พร้อมปิดงาน / ไม่ผ่าน ต้องแก้เพิ่ม]
 ```
 
-### คำถาม/ติดขัด (Blocker / question)
+## คำถาม/ติดขัด (blocker or question)
+
+Name who has to answer.
 
 ```
 ## ⚠️ คำถาม/ติดขัด
 
-[สิ่งที่ติดขัด หรือคำถามที่ต้องการคำตอบ — ระบุให้ชัดว่าใครต้องตอบ]
+[สิ่งที่ติดขัด หรือคำถามที่ต้องการคำตอบ พร้อมชื่อคนที่ต้องตอบ]
 
-**ผลกระทบถ้าไม่ได้คำตอบ:** [เช่น งานหยุด / เดดไลน์เลื่อน]
+**ผลกระทบถ้าไม่ได้คำตอบ:** [เช่น งานหยุด, เดดไลน์เลื่อน ระบุวันถ้าทราบ]
 ```
 
-### บันทึกการตัดสินใจ (Decision record)
+## บันทึกการตัดสินใจ (decision record)
 
 ```
 ## 📋 บันทึกการตัดสินใจ
 
 **ประเด็น:** [สิ่งที่ต้องตัดสินใจ]
 **ตัดสินใจ:** [ผลการตัดสินใจ]
-**เหตุผล:** [ทำไมถึงตัดสินใจแบบนี้]
-**ผู้ตัดสินใจ:** [ชื่อ/บทบาท ถ้าทราบ]
+**เหตุผล:** [เหตุผลที่เจาะจง]
+**ผู้ตัดสินใจ:** [ชื่อหรือบทบาท ถ้าทราบ]
 ```
+
+If the decision changes scope or AC, apply ground rule 1.

@@ -1,81 +1,92 @@
-# Story — type-specific guide
+# Story: gather questions and Thai description
 
-Loaded by `atlassian-kit:jira-content` Step 1–2. The shared metadata table, preview gate, and create commands live in `SKILL.md`; AC rules (including the Story-only coverage additions) live in [`acceptance-criteria.md`](../../../templates/acceptance-criteria.md) — this file holds only the Story-specific gather questions and Thai description template.
+Loaded by `atlassian-kit:jira-content` Steps 1 and 2. The shared metadata table, preview gate and create commands live in `SKILL.md`. Other rules are defined once, elsewhere:
 
-## Step 1 — Gather (Story)
+- AC format, register and coverage, including the Story-only additions: [`acceptance-criteria.md`](../../../templates/acceptance-criteria.md)
+- Title: [`title-conventions.md`](title-conventions.md)
+- Wording of the ticket text: [`README.md`](README.md) § Writing rules
 
-Ask the user (all at once, not one by one):
+This file holds only the Story questions and the Thai description.
 
-1. **Feature name** — short Thai title, action-oriented (e.g. "หักยอดคงเหลือตอนลูกค้ายืนยันการสั่งซื้อ") — full rule + anti-patterns: [`title-conventions.md`](title-conventions.md)
-2. **Why are we doing this?** — business reason / problem being solved
-3. **What should the system do?** — desired behavior in plain language
-4. **What is OUT of scope this round?** — important for QA
-5. **Any PO decision points?** — trade-offs or edge cases PO must sign off on
-6. **Acceptance criteria** — rough testable behaviors (you will format them)
+## Step 1: gather
 
-If the user already provided enough context, skip to Step 2.
+Ask all six at once. Done when items 1 to 4 and 6 each have an answer from the user. Item 5 may be "none". If the user cannot answer one, write `ไม่ทราบ` in that section; a guess is never an answer.
 
-## Step 2 — Format the issue (Story)
+1. **Feature name**: a short Thai title naming the outcome, e.g. "หักยอดคงเหลือตอนลูกค้ายืนยันการสั่งซื้อ"
+2. **Why now**: the business reason or the problem being solved
+3. **Behavior**: what the system should do, in plain language
+4. **Out of scope**: what this round does not cover (QA relies on this list)
+5. **PO decisions**: trade-offs or edge cases the PO must sign off on
+6. **Acceptance criteria**: rough testable behaviors; you format them
 
-Write the description in **Thai** using this structure:
+If the user's first message already answers these, go straight to Step 2.
+
+## Step 2: write the description
+
+Write in Thai with this structure. Fill each section from the Step 1 answers only. Done when no `[ ]` placeholder is left, every AC has all three bullets, and there are at least 3 ACs (happy path, error or edge, regression or permission).
 
 ```
 ## 🎯 เหตุผลทางธุรกิจ (ทำไมต้องทำ)
 
-[Current problem — 2-3 sentences. End with what we want to achieve.]
+[ปัญหาปัจจุบัน 2-3 ประโยค จบด้วยสิ่งที่ต้องการให้เกิด]
 
 ---
 
 ## ✅ พฤติกรรมที่ต้องการ
 
-1. [what the system does]
-2. [what the system does]
+1. [ระบบทำอะไร]
+2. [ระบบทำอะไร]
 
-> ⚠️ [caveat about what does NOT happen]
+> ⚠️ [สิ่งที่ไม่เกิดขึ้น ถ้ามีข้อควรระวัง]
 
 ---
 
 ## 📋 ขอบเขต (Scope)
 
 **อยู่ในขอบเขตรอบนี้**
-* [bullet list]
+* [รายการ]
 
-**ไม่อยู่ในขอบเขตรอบนี้ (สำคัญ — แจ้ง QA ให้ทราบ)**
-* [bullet list]
+**ไม่อยู่ในขอบเขตรอบนี้ (แจ้ง QA ให้ทราบ)**
+* [รายการ]
 
 ---
 
 ## ⚠️ จุดที่ PO ต้องรับทราบและตัดสินใจร่วม
 
-[Only include if there is a genuine decision point.]
+[ใส่เฉพาะเมื่อมีจุดตัดสินใจจริง ไม่มีให้ลบทั้ง section]
 
 ---
 
-## 🧪 เกณฑ์การยอมรับ (Acceptance Criteria) — สำหรับ QA
+## 🧪 เกณฑ์การยอมรับ (Acceptance Criteria) สำหรับ QA
 
-**AC1 — [Short title] (happy path)**
+**AC1 — [ชื่อสั้น] (happy path)**
 
-* กำหนดให้: [precondition]
-* เมื่อ: [action]
-* ผลลัพธ์: [expected outcome — be specific, plain business language only]
+* กำหนดให้: [สถานะก่อนทำ]
+* เมื่อ: [การกระทำ]
+* ผลลัพธ์: [ผลที่เห็น ระบุให้เจาะจง ใช้ภาษาธุรกิจ]
 
-**AC2 — [Short title] (error/edge case)**
+**AC2 — [ชื่อสั้น] (error หรือ edge case)**
 
-* กำหนดให้: [precondition]
-* เมื่อ: [action]
-* ผลลัพธ์: [expected outcome]
+* กำหนดให้: [สถานะก่อนทำ]
+* เมื่อ: [การกระทำ]
+* ผลลัพธ์: [ผลที่เห็น]
 
-**AC3 — [Short title] (regression/permission — Story's 3rd required AC, plus per-surface/fallback ACs on top where the change spans multiple screens or affects existing data)**
+**AC3 — [ชื่อสั้น] (regression หรือ permission)**
 
-* กำหนดให้: [precondition]
-* เมื่อ: [action]
-* ผลลัพธ์: [expected outcome]
+* กำหนดให้: [สถานะก่อนทำ]
+* เมื่อ: [การกระทำ]
+* ผลลัพธ์: [ผลที่เห็น]
 
 ---
 
-📎 อ้างอิงการตัดสินใจเชิงเทคนิค: [spec or ADR if applicable]
+📎 อ้างอิงการตัดสินใจเชิงเทคนิค: [spec หรือ ADR ลบบรรทัดนี้ถ้าไม่มี]
 ```
 
-**AC format/register/coverage rules (including the Story-only additions — per-surface, fallback):** [`acceptance-criteria.md`](../../../templates/acceptance-criteria.md) — single source, don't restate.
+The Thai section headings and their emoji are the team's required shape; keep them as written. When the change shows on several screens, or touches existing data that lacks the new value, add one AC per screen and one fallback AC for that data (see the Story additions in `acceptance-criteria.md`).
 
-Then proceed to `SKILL.md` Step 3 (metadata — Story uses `Story` issue type, `Medium` priority default, no environment/versions rows) → Step 4 (preview) → Step 5 (create).
+Weak and strong versions of the business reason:
+
+- Weak: "เพื่อยกระดับประสบการณ์ผู้ใช้และเพิ่มความถูกต้องของระบบ"
+- Strong: "ตอนนี้ยอดคงเหลือถูกหักตอนสิ้นวัน ลูกค้าที่สั่งซ้ำก่อนสิ้นวันจึงสั่งเกินยอดได้ ต้องหักทันทีที่ยืนยัน"
+
+Next: `SKILL.md` Step 3 (metadata: issue type `Story`, priority `Medium` by default, no environment or versions rows), then Step 4 (preview) and Step 5 (create).
