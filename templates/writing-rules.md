@@ -35,7 +35,7 @@ AC blocks (the กำหนดให้, เมื่อ, ผลลัพธ์ 
 Before the preview, count the em dashes in the file you are about to send. It must print 0:
 
 ```bash
-grep -c "—" body.md
+grep -o "—" body.md | wc -l
 ```
 
 A dash inside quoted error text or code is the only allowed hit; write it out as the words "em dash" when a ticket needs to mention the mark. When `siang:humanize` is installed, also run its `scan.py` on the file and read every hit.

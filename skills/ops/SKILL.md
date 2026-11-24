@@ -49,6 +49,7 @@ acli jira workitem view KEY-123 --json | python3 ${CLAUDE_SKILL_DIR}/scripts/adf
 
 # 3. CREATE — anything multi-section goes through md2adf.py (--description wraps plain text into ONE literal paragraph — see "Description format" below)
 python3 ${CLAUDE_SKILL_DIR}/scripts/md2adf.py desc.md -s "Summary" -p TEAM -t Task > /tmp/wi.json && acli jira workitem create --from-json /tmp/wi.json
+# md2adf.py create flags: -l LABEL, -P PARENT-KEY, -a '<JSON object>' (additionalAttributes: priority, duedate, components, fixVersions, ...), --assignee EMAIL-OR-ACCOUNT-ID
 acli jira workitem create --summary "X" --project TEAM --type Task --assignee @me   # OK ONLY when there's no multi-section description
 acli jira workitem create-bulk --from-csv issues.csv       # or --from-json; --generate-json scaffolds input
 

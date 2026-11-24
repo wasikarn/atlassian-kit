@@ -8,6 +8,10 @@ Pre-`1.0.0`: breaking changes may land in any `0.x` release.
 This file starts at `0.1.18` — releases before that predate the changelog. See
 `git log` for the full history back to `0.1.0`.
 
+## [0.4.17] — 2026-11-24
+
+- Fixes from review: jira-content SKILL.md no longer says the preview carries only summary/project/type/labels/parent without naming `-a` and `--assignee`, and a garbled `When acli can't` anchor is repaired; ops SKILL.md lists the `md2adf.py` create flags; writing-rules.md counts dashes, not lines.
+
 ## [0.4.16] — 2026-11-24
 
 - New `templates/writing-rules.md` at the plugin root holds the clarity pass, the AI-marks pass and a dash count, distilled from `siang:technical-writing` and `siang:humanize`, so ticket text gets the same checks on a machine without siang. It replaces README § Writing rules and is shared with `confluence-content`; siang stays an optional extra pass.
