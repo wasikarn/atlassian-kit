@@ -160,3 +160,5 @@ acli is the default. A small, closed set of operations genuinely need `mcp__plug
 - `atlassian-kit:jira-content` — Jira Bug/Story/Task/Epic/Sub-task content and templated comments. Calls into this skill to execute.
 - `atlassian-kit:confluence-content` — Confluence Spec/PRD page content. Calls acli for reads and `${CLAUDE_SKILL_DIR}/scripts/acli-rest-write.py` for page create/update (plan/apply).
 - Atlassian MCP (`mcp__plugin_atlassian_atlassian__*`) — fallback only, for the acli gaps in [When acli can't](#when-acli-cant-fall-back-to-the-atlassian-mcp); not the default for single ops. Provided by the official Atlassian plugin — install that plugin for the fallback to resolve.
+
+**Reformat plain-text descriptions:** `python3 scripts/acli-reformat.py KEY [--apply]` previews, then with `--apply` rewrites a Bug description whose section names are plain lines (for example from a Jira form) into headings and lists. See `jira-content/editing.md`.

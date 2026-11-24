@@ -45,6 +45,7 @@ deny	stop	acli jira workitem create-bulk --from-json f.json
 deny	stop	bash skills/acli/scripts/acli-edit.sh PROJ-1 d.md
 deny	stop	bash skills/acli/scripts/acli-new.sh p.json
 deny	stop	bash skills/jira-content/scripts/acli-edit.sh PROJ-1 d.md
+deny	stop	python3 skills/ops/scripts/acli-reformat.py PROJ-1 --apply
 deny	stop	cd x && acli jira workitem edit --from-json p.json --yes
 deny	stop	FOO=1 acli jira workitem edit --from-json p.json --yes
 deny	stop	echo y | acli jira workitem delete --key X

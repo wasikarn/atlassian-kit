@@ -8,6 +8,13 @@ Pre-`1.0.0`: breaking changes may land in any `0.x` release.
 This file starts at `0.1.18` — releases before that predate the changelog. See
 `git log` for the full history back to `0.1.0`.
 
+## [0.4.23] — 2026-11-24
+
+### Added
+
+- `skills/ops/scripts/acli-reformat.py`: turns a plain-text Bug description (as a Jira form produces) into the template's shape, with real headings, numbered lists and Environment bullets. Preview by default, `--apply` writes, and a description that already has headings is left alone. Tested on synthetic input (`test_acli_reformat.py`) and on a ticket submitted through the APPR Bug form.
+- `jira-content/editing.md` section for it; one guard corpus row.
+
 ## [0.4.22] — 2026-11-24
 
 ### Changed

@@ -31,7 +31,7 @@ import sys
 # acli as a word or the last part of a path; not inside jira-acli, skills/acli/, acli-ls.py.
 CAND = re.compile(r"(?<![\w.-])acli(?![\w./-])")
 # The four wrappers that write (both skills ship copies under these names).
-WRAP = re.compile(r"acli-(edit|new|set-desc|assign)\.sh")
+WRAP = re.compile(r"acli-(edit|new|set-desc|assign)\.sh|acli-reformat\.py")
 # The skill's direct-REST scripts: neither matches CAND (hyphen-joined), so name them.
 # rest-get is GET-only by construction; rest-write mutates.
 REST = re.compile(r"acli-rest-(get|write)\.py")

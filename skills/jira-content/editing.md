@@ -31,3 +31,13 @@ bash "${CLAUDE_SKILL_DIR}/scripts/md2adf.sh" note.md > /tmp/note.json
 acli jira workitem comment update --key KEY --id <commentId> --body-adf /tmp/note.json
 ```
 
+## Reformat a ticket that arrived as plain text
+
+A ticket created from a Jira form (or typed without headings) has its sections as plain lines, so it does not look like the template. Preview the fix, then apply:
+
+```bash
+python3 "${CLAUDE_SKILL_DIR}/../ops/scripts/acli-reformat.py" KEY            # preview, writes nothing
+python3 "${CLAUDE_SKILL_DIR}/../ops/scripts/acli-reformat.py" KEY --apply    # write
+```
+
+It turns a line that exactly matches a section name (Environment, Test Data, Steps to Reproduce, Expected Result, Actual Result, ผลกระทบ, Evidence, Workaround, Regression, Acceptance Criteria) into a heading, `1.` lines into a numbered list, and the lines under Environment into bullets. It never reorders, rewords or adds a section; the preview lists the template sections the ticket lacks, which a person has to write. A description that already has headings is left alone.
