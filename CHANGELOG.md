@@ -8,6 +8,9 @@ Pre-`1.0.0`: breaking changes may land in any `0.x` release.
 This file starts at `0.1.18` — releases before that predate the changelog. See
 `git log` for the full history back to `0.1.0`.
 
+## [0.4.7] — 2026-11-24
+**Bug Environment and Affects versions at create.** Both go through `additionalAttributes` (`environment` as an ADF document, `versions` as a name list) and read back as sent on a live APPR Bug. `fields.md` documents them; the ops and jira-content docs no longer send these two through `issue-set` after create.
+
 ## [0.4.6] — 2026-11-24
 **Original estimate and Time tracking at create.** `timetracking.originalEstimate` and `remainingEstimate` go through `additionalAttributes`; verified by read-back on a live APPR Task (2h 30m and 2h read back as 9000 and 7200 seconds). `fields.md` now supports every field on the APPR layout except Status and Development.
 

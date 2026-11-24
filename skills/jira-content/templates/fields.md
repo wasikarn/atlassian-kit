@@ -51,7 +51,14 @@ The api reader accepts only `/rest/api/3/` paths, so the agile board endpoints a
 
 ## Bug only
 
-Environment (`environment`, rich text) and Affects versions (`versions`) sit on the Bug screen. They are not covered by the check above; `SKILL.md` Step 3 keeps its current handling of both until they are verified.
+Two more fields sit on the Bug screen. Both go through `additionalAttributes` and read back as sent (verified on a live APPR Bug, 2026-11-24).
+
+| Field | Where it goes | Value |
+|---|---|---|
+| Environment | `additionalAttributes.environment` | an ADF document, not a plain string: `{"type": "doc", "version": 1, "content": [{"type": "paragraph", "content": [{"type": "text", "text": "staging"}]}]}` |
+| Affects versions | `additionalAttributes.versions` | `[{"name": "R2c"}]`; same version list as Fix versions, and the name must exist |
+
+The description holds no environment or version text; these fields do (see `bug.md`).
 
 ## Not supported yet
 
