@@ -19,12 +19,10 @@ METHODS = ("get", "post", "put", "patch", "delete")
 
 # Tiers: read = GET; write = other methods; destructive = needs --allow-destructive on top of plan+confirm.
 DESTRUCTIVE_TAGS = frozenset({
-    "Workflows", "Workflow schemes", "Workflow scheme drafts", "Workflow scheme project associations",
-    "Issue security schemes", "Issue security level", "Permission schemes", "Permissions",
+    "Workflows", "Workflow schemes", "Workflow scheme drafts", "Issue security schemes", "Permission schemes",
     "Issue type schemes", "Issue type screen schemes", "Field schemes", "Issue field configurations",
-    "Issue notification schemes", "Priority schemes", "Project role actors", "Project roles", "Groups",
-    "Issue bulk operations", "Issue custom field contexts", "Screens", "Screen schemes", "Screen tabs",
-    "Screen tab fields", "Issue types", "Issue type properties", "Plans", "Teams in plan",
+    "Issue notification schemes", "Priority schemes", "Project role actors", "Groups", "Issue bulk operations",
+    "Issue custom field contexts",
 })
 DESTRUCTIVE_PATH_PARTS = ("/bulk", "/permissionscheme")
 

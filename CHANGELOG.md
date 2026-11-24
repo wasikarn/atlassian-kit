@@ -8,6 +8,9 @@ Pre-`1.0.0`: breaking changes may land in any `0.x` release.
 This file starts at `0.1.18` — releases before that predate the changelog. See
 `git log` for the full history back to `0.1.0`.
 
+## [0.3.2] — 2026-11-24
+**Review fixes for jira-call.** A `--path` value of `.` or `..` is refused (it would walk the URL to another endpoint). A DELETE whose path has no GET in the index now says in the plan that apply cannot confirm it. The destructive tier is back to the 15 admin tags the plan named (index now 280 read, 166 write, 184 destructive; creating a screen or an issue type no longer needs `--allow-destructive`). Smaller cleanups: one `name=value` parser, gates as a table, named read-back results. `README.md` and the guard-corpus note in `CLAUDE.md` mention `jira-call`. A test now fails if the committed index was built by another generator schema.
+
 ## [0.3.1] — 2026-11-24
 **Honest read-back for jira-call.** A create or update whose sent fields could not be compared (nested-only body, or fields Jira does not echo) no longer prints "verified by read-back": it says the read-back only confirmed the item exists, or compared the simple fields only. A delete (404) and a full simple-field match still say verified.
 

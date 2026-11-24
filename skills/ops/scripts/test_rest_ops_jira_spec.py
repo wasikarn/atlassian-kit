@@ -176,6 +176,25 @@ check("compare: no body is exists-only", spec._compare(None, {"id": "1"}) == "ex
 check("readback: a create with a nested-only body is exists-only", spec._readback(
     lambda p, q: {"id": "11"}, cargs, cbase, '{"scheme": {"id": 1}}', {"self": "/rest/api/3/component/11"}) == "exists")
 
+check("index was built by this generator schema", spec.load_index()["schema"] == gen.SCHEMA_VERSION)
+for bad in (".", "..", "..."):
+    refuses(f"validate: path value {bad!r} walks the URL", {"op": "updateComponent", "path": f"id={bad}", "body": "{}"}, "allowed characters")
+check("validate: a dotted id is still fine", spec._validate({"op": "updateComponent", "path": "id=1.2", "body": "{}"})["path"] == ["id=1.2"])
+check("tier: creating a screen is a plain write", idx["addScreenTab"]["tier"] == "write" if "addScreenTab" in idx else True)
+check("tier: workflow changes stay destructive", all(o["tier"] == "destructive" for o in idx.values() if o["tag"] == "Workflows" and o["method"] != "GET"))
+noget = sorted(k for k, o in idx.items() if o["method"] == "DELETE" and spec._sibling_get(idx, o) is None and k not in spec.HANDWRITTEN
+                and not (o.get("body") or {}).get("required") and not o.get("experimental") and not o.get("deprecated"))
+check("index has DELETE operations without a GET sibling to test with", bool(noget))
+if noget:
+    nop = idx[noget[0]]
+    nflags = {"op": noget[0], "allow-destructive": "yes", "path": [f"{p['name']}={p['enum'][0] if p.get('enum') else 1}" for p in nop["params"] if p["in"] == "path" and p["required"]],
+              "query": [f"{p['name']}=1" for p in nop["params"] if p["in"] == "query" and p["required"] and not p.get("enum")]}
+    nflags = {k: v for k, v in nflags.items() if v}
+    nargs = spec._validate(nflags)
+    nbase, _ = spec._plan(get_ok, nargs)
+    check("plan: a DELETE with no GET says apply cannot confirm it", nbase.get("no_readback") is True and any(
+        "no read-back" in n for n in spec._describe(nbase, None)))
+
 if FAILS:
     print(f"{len(FAILS)} check(s) failed")
     sys.exit(1)

@@ -22,8 +22,10 @@ _INDEX = None
 # operationId -> the hand-written operation with richer previews and read-back
 HANDWRITTEN = {"editIssue": "issue-set", "deleteIssue": "issue-delete", "createVersion": "version-create",
                "updateVersion": "version-edit", "deleteVersion": "version-delete", "createFilter": "filter-create"}
-GATES = (("allow-destructive", "destructive tier"), ("allow-experimental", "experimental"),
-         ("allow-deprecated", "deprecated"))
+GATES = (("allow-destructive", "destructive tier", lambda op: op["tier"] == "destructive"),
+         ("allow-experimental", "experimental", lambda op: op.get("experimental")),
+         ("allow-deprecated", "deprecated", lambda op: op.get("deprecated")))
+PARTIAL, EXISTS_ONLY = "partial", "exists"  # read-back results besides True/False; acli-rest-write.py words them
 VALUE_RE = re.compile(r"^[^\x00-\x1f]{1,500}$")
 PATH_VALUE_RE = re.compile(r"^[A-Za-z0-9_.:@-]{1,128}$")
 MAX_BODY = 200_000
@@ -59,6 +61,11 @@ def _pairs(items, what):
     return out
 
 
+def _kv(items):
+    """name=value strings (already checked by _pairs) back to a dict."""
+    return dict(i.split("=", 1) for i in items)
+
+
 def _validate(flags, pos=()):
     if pos:
         raise Fatal(f"jira-call takes no positional arguments: {pos[0]!r}")
@@ -79,36 +86,35 @@ def _validate(flags, pos=()):
     if op.get("body", {}).get("multipart"):
         raise Fatal(f"{op_id} is a multipart upload; jira-call does not send those")
     args = {"op": op_id}
-    for flag, why in GATES:
-        needed = {"allow-destructive": op["tier"] == "destructive", "allow-experimental": op.get("experimental"),
-                  "allow-deprecated": op.get("deprecated")}[flag]
+    for flag, why, applies in GATES:
+        needed = applies(op)
         if flag in flags:
             if str(_one(flags, flag)) != "yes":
                 raise Fatal(f"--{flag} takes the value yes")
             args[flag] = "yes"
         if needed and flag not in args:
             raise Fatal(f"{op_id} is {why}: add --{flag} yes to plan it")
-    pp = _pairs(_list(flags, "path"), "path")
-    qq = _pairs(_list(flags, "query"), "query")
+    path_args = _pairs(_list(flags, "path"), "path")
+    query_args = _pairs(_list(flags, "query"), "query")
     declared = {(p["in"], p["name"]): p for p in op["params"]}
-    for kind, given in (("path", pp), ("query", qq)):
+    for kind, given in (("path", path_args), ("query", query_args)):
         for name, value in given.items():
             p = declared.get((kind, name))
             if p is None:
                 raise Fatal(f"{op_id} has no {kind} parameter {name!r} "
                             f"(has: {', '.join(sorted(n for k, n in declared if k == kind)) or 'none'})")
-            ok = PATH_VALUE_RE.match(value) if kind == "path" else VALUE_RE.match(value)
+            ok = (PATH_VALUE_RE.match(value) and value.strip(".")) if kind == "path" else VALUE_RE.match(value)  # "." and ".." would walk the URL
             if not ok:
                 raise Fatal(f"--{kind} {name} has a value outside the allowed characters")
             if p.get("enum") and value not in [str(e) for e in p["enum"]]:
                 raise Fatal(f"--{kind} {name} must be one of {p['enum']}")
     for (kind, name), p in declared.items():
-        if p["required"] and name not in (pp if kind == "path" else qq):
+        if p["required"] and name not in (path_args if kind == "path" else query_args):
             raise Fatal(f"{op_id} needs --{kind} {name}=<value>")
-    if pp:
-        args["path"] = sorted(f"{k}={v}" for k, v in pp.items())
-    if qq:
-        args["query"] = sorted(f"{k}={v}" for k, v in qq.items())
+    if path_args:
+        args["path"] = sorted(f"{k}={v}" for k, v in path_args.items())
+    if query_args:
+        args["query"] = sorted(f"{k}={v}" for k, v in query_args.items())
     spec_body = op.get("body")
     text = None
     if "body" in flags and "body-file" in flags:
@@ -143,7 +149,7 @@ def _validate(flags, pos=()):
 
 
 def _build_path(op, args):
-    values = dict(i.split("=", 1) for i in args.get("path", []))
+    values = _kv(args.get("path", []))
     path = op["path"]
     for name, v in values.items():
         path = path.replace("{" + name + "}", urllib.parse.quote(v, safe=""))
@@ -151,7 +157,7 @@ def _build_path(op, args):
 
 
 def _query(args):
-    pairs = [tuple(i.split("=", 1)) for i in args.get("query", [])]
+    pairs = list(_kv(args.get("query", [])).items())
     return urllib.parse.urlencode(pairs) if pairs else ""
 
 
@@ -187,6 +193,8 @@ def _plan(get, args):
             if e.code != 404:
                 raise
             base["exists"] = False
+    elif op["method"] == "DELETE":
+        base["no_readback"] = True
     return base, (json.loads(args["body"]) if "body" in args else None)
 
 
@@ -196,6 +204,8 @@ def _describe(base, body):
         notes.append("experimental: Atlassian may change or remove this operation without notice")
     if base.get("deprecated"):
         notes.append("deprecated: Atlassian plans to remove this operation")
+    if base.get("no_readback"):
+        notes.append("no read-back: the index has no GET on this path, so apply cannot confirm the delete; check Jira after it")
     if base["method"] == "DELETE":
         notes.append("IRREVERSIBLE: Jira has no undo for this delete" + (
             "" if base.get("exists", True) else "; the target was not found just now"))
@@ -220,12 +230,12 @@ def _compare(sent, cur):
     """False on a mismatch; True when every sent field was compared; "partial" when nested values were skipped;
     "exists" when nothing could be compared (the resource was found and that is all that is known)."""
     if not isinstance(sent, dict) or not _comparable(sent, cur):
-        return "exists"
+        return EXISTS_ONLY
     for k, v in sent.items():
         if isinstance(v, SCALARS) and k in cur and cur[k] != v:
             return False
     skipped = any(not (isinstance(v, SCALARS) and k in cur) for k, v in sent.items())
-    return "partial" if skipped else True
+    return PARTIAL if skipped else True
 
 
 def _readback(get, args, base, body_text, result):
