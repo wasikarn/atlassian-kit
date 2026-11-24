@@ -10,6 +10,7 @@ Every template that defines what a created or edited Jira ticket contains lives 
 | `bug.payload.json`, `story.payload.json`, `task.payload.json`, `epic.payload.json`, `subtask.payload.json` | ADF payloads for `acli jira workitem create --from-json`, when the content is already complete. |
 | `comments.md` | Four comment shapes for an existing ticket: status update, QA verification, blocker, decision record. |
 | `title-conventions.md` | The summary rule shared by all five types. |
+| `fields.md` | Fields beyond summary and description: which types take them, the value format, how they are sent, and what is not supported yet. |
 
 The Acceptance Criteria rule sits at the plugin root, [`../../../templates/acceptance-criteria.md`](../../../templates/acceptance-criteria.md), because `confluence-content` shares it. Title rules stay here: a Confluence page title is a different concept from a work-item summary.
 

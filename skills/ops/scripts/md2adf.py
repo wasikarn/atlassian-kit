@@ -286,12 +286,15 @@ def main():
     ap.add_argument("-t", "--type", help="work item type for the create payload (e.g. Bug)")
     ap.add_argument("-l", "--labels", help="comma-separated labels for the create payload")
     ap.add_argument("-P", "--parent", help="parent work-item key for a sub-task (sets parentIssueId)")
+    ap.add_argument("-a", "--attrs", help="JSON object of extra fields for the create payload, "
+                    "e.g. '{\"duedate\": \"2026-12-31\", \"priority\": {\"name\": \"Low\"}}' (sets additionalAttributes)")
+    ap.add_argument("--assignee", help="assignee email or account ID for the create payload")
     args = ap.parse_args()
 
     md = sys.stdin.read() if args.file == "-" else open(args.file, encoding="utf-8").read()
     adf = parse(md)
 
-    if args.summary or args.project or args.type or args.parent or args.labels:
+    if args.summary or args.project or args.type or args.parent or args.labels or args.attrs or args.assignee:
         if not (args.summary and args.project and args.type):
             sys.exit("FATAL: a create payload needs all of -s/--summary, -p/--project, -t/--type")
         payload = {"summary": args.summary, "projectKey": args.project,
@@ -300,6 +303,16 @@ def main():
             payload["parentIssueId"] = args.parent
         if args.labels:
             payload["labels"] = [x.strip() for x in args.labels.split(",") if x.strip()]
+        if args.assignee:
+            payload["assignee"] = args.assignee
+        if args.attrs:
+            try:
+                attrs = json.loads(args.attrs)
+            except ValueError as e:
+                sys.exit(f"FATAL: --attrs is not valid JSON: {e}")
+            if not isinstance(attrs, dict):
+                sys.exit("FATAL: --attrs must be a JSON object")
+            payload["additionalAttributes"] = attrs
         out = payload
     else:
         out = adf

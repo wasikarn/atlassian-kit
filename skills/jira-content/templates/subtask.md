@@ -20,6 +20,8 @@ Ask all five at once. Done when items 1 to 4 each have an answer from the user, 
 
 If the user's first message already answers these, go straight to Step 2.
 
+Ask the optional fields in [`fields.md`](fields.md) in the same message (priority, assignee, due date, start date, components, fix versions). A field the user leaves out stays unset.
+
 ## Step 2: write the description
 
 Write in Thai with this structure. Fill each section from the Step 1 answers only. Done when no `< >` placeholder is left, every AC has all three bullets, and there is at least 1 AC.

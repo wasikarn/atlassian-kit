@@ -8,6 +8,12 @@ Pre-`1.0.0`: breaking changes may land in any `0.x` release.
 This file starts at `0.1.18` — releases before that predate the changelog. See
 `git log` for the full history back to `0.1.0`.
 
+## [0.4.3] — 2026-11-24
+**Optional Jira fields at create.** New `jira-content/templates/fields.md` lists the fields a ticket can carry beyond summary and description (priority, assignee, due date, start date, components, fix versions), the value format, and what is not supported yet (Story Points, estimates and time tracking are on no APPR screen; Team and Sprint need an id lookup). `md2adf.py` gains `-a/--attrs` (JSON object into `additionalAttributes`) and `--assignee`. Verified by read-back on a live APPR ticket. The ops and jira-content docs no longer say priority cannot be set at create.
+
+## [0.4.2] — 2026-11-24
+**Guided templates for every issue type.** `task.md`, `epic.md` and `subtask.md` join `bug.md` and `story.md`; all templates, `comments.md`, `title-conventions.md` and the README are rewritten with one shared set of writing rules.
+
 ## [0.4.1] — 2026-11-24
 **Read-back wording names the product.** The "only confirmed the item exists" and "compared the simple fields only" lines said "check them in Jira" for every spec operation; they now say Jira or Confluence. Found by the first live `confluence-call` write (a content property on a throwaway ARAC page, created and deleted through plan/apply).
 

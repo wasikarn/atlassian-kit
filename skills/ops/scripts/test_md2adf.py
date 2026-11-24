@@ -94,6 +94,42 @@ def test_underline_and_subsup_round_trip():
     assert sub_node["marks"] == [{"type": "subsup", "attrs": {"type": "sub"}}]
 
 
+def _payload(*args):
+    import json
+    import subprocess
+    r = subprocess.run([sys.executable, str(Path(__file__).parent / "md2adf.py"), "-", *args],
+                       input="body", capture_output=True, text=True)
+    return r.returncode, (json.loads(r.stdout) if r.returncode == 0 else r.stderr)
+
+
+def test_attrs_flag_puts_extra_fields_under_additional_attributes():
+    code, out = _payload("-s", "t", "-p", "APPR", "-t", "Task",
+                         "-a", '{"duedate": "2026-12-31", "priority": {"name": "Low"}}')
+    assert code == 0
+    assert out["additionalAttributes"] == {"duedate": "2026-12-31", "priority": {"name": "Low"}}
+
+
+def test_assignee_flag_sets_the_assignee_key():
+    code, out = _payload("-s", "t", "-p", "APPR", "-t", "Task", "--assignee", "a@b.co")
+    assert code == 0 and out["assignee"] == "a@b.co"
+
+
+def test_payload_without_the_new_flags_has_neither_key():
+    code, out = _payload("-s", "t", "-p", "APPR", "-t", "Task")
+    assert code == 0 and "additionalAttributes" not in out and "assignee" not in out
+
+
+def test_attrs_that_is_not_a_json_object_fails_loud():
+    for bad in ("not json", "[1]"):
+        code, err = _payload("-s", "t", "-p", "APPR", "-t", "Task", "-a", bad)
+        assert code != 0 and "FATAL" in err and "--attrs" in err
+
+
+def test_attrs_alone_still_requires_summary_project_and_type():
+    code, err = _payload("-a", '{"duedate": "2026-12-31"}')
+    assert code != 0 and "FATAL" in err
+
+
 if __name__ == "__main__":
     tests = [v for k, v in list(globals().items()) if k.startswith("test_")]
     failed = 0

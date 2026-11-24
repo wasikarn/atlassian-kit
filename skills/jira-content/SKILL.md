@@ -44,6 +44,7 @@ Write the body in **Thai** using the matching template. Wording rules for the ti
 - **Site** — `acli jira auth status`. For MCP, `mcp__plugin_atlassian_atlassian__getAccessibleAtlassianResources`. Ask if several.
 - **Project key** — User request; default `PROJ` only when the content is plausibly work for that project. If the ticket is clearly about something else (a different product, a personal project, generic content with no signal for that project), ask for the real project key instead of silently filing it under `PROJ` — the default is a convenience for the common case, not a license to guess the project. Validate via `acli jira project view --key <KEY>` before create. Fall back to `mcp__plugin_atlassian_atlassian__listJiraProjects` (v1: `getVisibleJiraProjects`) (deferred on v2: `executeRead(name="listJiraProjects", cloudId=…, inputs={"action": "create"})` lists projects you can create in, see `ops/SKILL.md` § "When acli can't") only if acli is unavailable/unauthed.
 - **Issue type** — Matches Step 1's pick. acli has no issue-type-metadata command; confirm via `mcp__plugin_atlassian_atlassian__listJiraProjectIssueTypesMetadata` (v1: `getJiraProjectIssueTypesMetadata`) (deferred on v2: reach it via `executeRead`, see `ops/SKILL.md` § "When acli can't") if create rejects. If the project key is still unresolved among multiple plausible candidates, check issue-type support on those candidates proactively (same MCP call) before asking the user to pick — narrowing "which of these projects" down to only the ones that actually support the requested type is a more useful question than a blind pick-one-of-N.
+- **Other fields** (priority beyond the default, assignee, due date, start date, components, fix versions) — [`templates/fields.md`](templates/fields.md) lists what each type supports, the value format and what is not supported yet.
 - **Priority** — **Bug:** money/data-loss/blocked-workflow → `High`; functional w/ workaround → `Medium`; cosmetic → `Low`. **Others:** `Medium` unless user says otherwise.
 - **Labels** — `bug` + 1-2 domain tags (Bug); 1-2 domain tags (others). Do NOT auto-add PO/QA labels.
 - **Environment** *(Bug only)* — Native Jira field. prod/staging/local. Wrap in ADF for MCP fallback.
@@ -55,7 +56,7 @@ Write the body in **Thai** using the matching template. Wording rules for the ti
 
 Show resolved metadata + Thai title + rendered content + chosen backend as a review surface. If the type has an AC section, confirm it covers error + boundary + regression paths (see [`../../templates/acceptance-criteria.md`](../../templates/acceptance-criteria.md)). Create/send **only on the user's explicit go-ahead** — this gate is the safeguard against unwanted writes.
 
-`md2adf.sh`/`adf2md.py` (the acli-path preview mechanism in 5a) only carry summary/project/type/labels/parent — priority, environment, and affects-version never appear in that rendered card even when resolved. State those three in prose alongside the rendered card rather than assuming the script surfaces them; if the user needs them set at create time, acli can't do it (see `atlassian-kit:ops` § "When acli can't") and 5b's MCP path is required instead.
+`md2adf.sh`/`adf2md.py` (the acli-path preview mechanism in 5a) only carry summary/project/type/labels/parent — priority, environment, affects-version and every other `additionalAttributes` field never appear in that rendered card even when resolved. State them in prose alongside the rendered card rather than assuming the script surfaces them. Priority, due date, start date, components and fix versions are set at create time with `md2adf.sh -a` (see [`templates/fields.md`](templates/fields.md)); environment and affects-version still need `issue-set` after create or 5b's MCP path.
 
 Before showing the preview, re-read the metadata table you're about to display against the actual flag/payload values you're about to send — rendering only proves a value is syntactically valid, not that it matches what you stated as resolved. Confirmed failure mode: a Bug's metadata table stated Labels as `bug`, `billing`, `csv-export`, but the actual `-l` flag and MCP `additional_fields.labels` carried only `billing,csv-export` — `bug` silently dropped between what was claimed resolved and what was typed into the command, and rendering caught nothing because `billing,csv-export` is a perfectly valid label list on its own. A field the render mechanism does carry (like labels) is not automatically safe just because it isn't on the priority/environment/affects-version blind-spot list above.
 
@@ -63,7 +64,7 @@ This check isn't limited to fields the metadata table displays — a payload-onl
 
 ## Step 5 — Create
 
-Default to `acli`. Fall back to Atlassian MCP only when acli is unavailable, unauthenticated, or cannot set a required field. "Required" means the *user* explicitly stated a value for a field acli's create schema can't carry (e.g. an explicit priority) — that's what forces the whole create over to MCP. A value *you* inferred rather than the user stating it (e.g. assuming Environment=prod from context) doesn't force the switch by itself: keep acli as the default and state the inferred value in prose per Step 4, since the user hasn't confirmed it yet either. Two drafts can correctly land on different defaults for this reason — check which case actually applies before reading that as an inconsistency.
+Default to `acli`. Fall back to Atlassian MCP only when acli is unavailable, unauthenticated, or cannot set a required field. "Required" means the *user* explicitly stated a value for a field acli's create schema can't carry (e.g. an explicit environment) — that's what forces the whole create over to MCP. A value *you* inferred rather than the user stating it (e.g. assuming Environment=prod from context) doesn't force the switch by itself: keep acli as the default and state the inferred value in prose per Step 4, since the user hasn't confirmed it yet either. Two drafts can correctly land on different defaults for this reason — check which case actually applies before reading that as an inconsistency.
 
 ### 5a — Jira issue via acli (default)
 
@@ -80,7 +81,7 @@ bash "${CLAUDE_SKILL_DIR}/scripts/md2adf.sh" /tmp/ticket.md \
 acli jira workitem create --from-json /tmp/wi.json --json
 ```
 
-Reply: `✅ Created [PROJ-XXX](https://<site>.atlassian.net/browse/PROJ-XXX)`. If user also needs `priority` / `environment` / `versions` / `parent` / `assignee` at create time and acli can't satisfy one, switch to MCP for that field.
+Reply: `✅ Created [PROJ-XXX](https://<site>.atlassian.net/browse/PROJ-XXX)`. Priority, due date, start date, components and fix versions go in at create time through `md2adf.sh -a` (see [`templates/fields.md`](templates/fields.md)). If the user also needs `environment` or `versions` at create time, use `issue-set` after create or switch to MCP for that field.
 
 ### 5b — Jira issue MCP fallback
 
