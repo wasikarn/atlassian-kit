@@ -31,11 +31,11 @@ Create or edit the **content** of a Jira Bug/Story/Task/Epic/Sub-task, or a temp
 cat "${CLAUDE_SKILL_DIR}/templates/bug.md"   # or story.md, task.md, epic.md, subtask.md, comments.md
 ```
 
-Ask all gather questions **at once, not one by one**. If the user already provided enough, skip to Step 2. Ask the optional fields in [`templates/fields.md`](templates/fields.md) in the same message; a field the user leaves out stays unset.
+Ask the type with `AskUserQuestion` when it is not clear, and all gather questions **at once, not one by one**, as free text. If the user already provided enough, skip to Step 2. Ask the optional fields in [`templates/fields.md`](templates/fields.md) in the same message; a field the user leaves out stays unset.
 
 ## Step 1b — Check for existing tickets
 
-Before Step 2 on every create, run the duplicate check in [`../../templates/intake.md`](../../templates/intake.md) and let the user choose when it finds a likely match. When the user names an existing ticket key, skip Step 1 and use the update flow in the same file. The preview in Step 4 is shown for every create and update, the label `test` included.
+Before Step 2 on every create, run the duplicate check in [`../../templates/intake.md`](../../templates/intake.md) and let the user choose when it finds a likely match. Closed choices (type, duplicate pick, preview go-ahead) go through `AskUserQuestion`; see its § How to ask. When the user names an existing ticket key, skip Step 1 and use the update flow in the same file. The preview in Step 4 is shown for every create and update, the label `test` included.
 
 ## Step 2 — Format the content
 

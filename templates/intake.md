@@ -15,7 +15,7 @@ bash "${CLAUDE_SKILL_DIR}/../ops/scripts/acli-ls.sh" --jql 'project = KEY AND su
 
    Join several words with `AND summary ~ "word2"`. Use `summary ~`, not `text ~`: on APPR the second returns tickets that do not match the words. The wrapper prints up to 30 rows; read the first 5.
 3. Show the first 5 hits as key, status and summary in the preview, Done tickets included, so the user can tell an old ticket from a real duplicate.
-4. No hit: go to Step 2 without asking. A hit: stop and let the user pick one. Never pick for them.
+4. No hit: go to Step 2 without asking. A hit: stop and ask the user to pick one with `AskUserQuestion` (the four choices below as its options). Never pick for them.
 
 | Choice | What follows |
 |---|---|
@@ -35,4 +35,8 @@ Fields an update can change: description sections, plus what `acli-rest-write.py
 
 ## Preview always
 
-Every create and every update shows its preview and waits for the user's go-ahead, a ticket with the label `test` included. The preview carries the duplicate-check result.
+Every create and every update shows its preview and waits for the user's go-ahead, a ticket with the label `test` included. The preview carries the duplicate-check result. After the preview, ask for the go-ahead with `AskUserQuestion`: create, or change something first.
+
+## How to ask
+
+A closed choice is an `AskUserQuestion`: the ticket type (Bug, Story, Task, Epic, Sub-task), the duplicate pick above, the preview go-ahead, and replace or append in the update flow. Ticket content (symptom, reason, scope, expected result) is free text; ask it in one message as the guided file says. When `AskUserQuestion` is not available (an unattended or headless run), print the same options as a numbered list, recommended one first, and stop until the user answers; never choose for them.

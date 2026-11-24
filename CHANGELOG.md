@@ -8,6 +8,10 @@ Pre-`1.0.0`: breaking changes may land in any `0.x` release.
 This file starts at `0.1.18` — releases before that predate the changelog. See
 `git log` for the full history back to `0.1.0`.
 
+## [0.4.21] — 2026-11-24
+
+- intake.md § How to ask: closed choices (ticket type, duplicate pick, preview go-ahead, replace or append) use `AskUserQuestion`; ticket content stays free text; a numbered-list fallback covers runs without it. SKILL.md Steps 1 and 1b point to it.
+
 ## [0.4.20] — 2026-11-24
 
 - jira-content/SKILL.md split: the MCP fallback (5b) moved to `mcp-fallback.md` and the description and comment edit flows to `editing.md`, each linked from SKILL.md (20.9 KB to 14.7 KB), so the main file loads small and `edit` works on it again. `intake.md` points at `editing.md`.
