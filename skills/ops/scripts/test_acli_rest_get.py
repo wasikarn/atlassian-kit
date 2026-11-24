@@ -337,6 +337,27 @@ def test_unknown_subcommand_prints_usage():
     assert code == 1 and "usage" in err
 
 
+# --- jira-ops (local index search, no request) ---------------------------------
+
+def test_jira_ops_finds_an_operation_by_words_and_sends_no_request():
+    code, out, err, op = run_main(["jira-ops", "component", "delete"], standard_routes())
+    rows = json.loads(out)["shown"]
+    assert code == 0 and any(r["op"] == "deleteComponent" and r["tier"] == "destructive" for r in rows)
+    assert all(t in (r["op"] + r["path"]).lower() for r in rows for t in ("component", "delete"))
+    assert op.calls == []
+
+
+def test_jira_ops_with_no_match_says_zero():
+    code, out, _, _ = run_main(["jira-ops", "zzzz-no-such-op"], standard_routes())
+    assert code == 0 and json.loads(out) == {"matches": 0, "shown": []}
+
+
+def test_jira_ops_caps_the_listing_but_reports_the_total():
+    code, out, _, _ = run_main(["jira-ops"], standard_routes())
+    data = json.loads(out)
+    assert code == 0 and data["matches"] == 630 and len(data["shown"]) == 40
+
+
 # --- error reporting ---------------------------------------------------------
 
 def test_http_error_is_fatal_with_status_and_no_traceback():

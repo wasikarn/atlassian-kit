@@ -48,7 +48,7 @@ ISSUETYPE_RE = re.compile(r"^[0-9]+$")
 METHOD = "GET"  # the only method this script may send: every request goes through http_request (opener, METHOD, …)
 FIND_USER_MAX = 50
 USAGE = ("usage: acli-rest-get.py transitions ISSUE-KEY | find-user QUERY | "
-         "createmeta PROJECT-KEY [ISSUETYPE-ID] | api <jira|confluence> <PATH>")
+         "createmeta PROJECT-KEY [ISSUETYPE-ID] | api <jira|confluence> <PATH> | jira-ops [TEXT ...]")
 # Jira Software reads outside /rest/api/3, GET only, each matched whole: board list/get/configuration/properties/
 # features, and the internal greenhopper board model (it has status names; the agile configuration has only ids).
 _Q = r"(\?[A-Za-z0-9_=&%,-]*)?"
@@ -146,6 +146,8 @@ def parse_args(args):
         if len(rest) == 2 and not ISSUETYPE_RE.match(rest[1]):
             raise Fatal(f"not an issue type id (digits only): {rest[1]!r}")
         return read_session, createmeta, rest
+    if cmd == "jira-ops":
+        return (lambda opener, run, env_file=ENV_FILE: None), jira_ops, rest
     if cmd == "api" and len(rest) == 2:
         if rest[0] not in ("jira", "confluence"):
             raise Fatal(f"product must be jira or confluence, not {rest[0]!r}")
@@ -165,6 +167,22 @@ def parse_args(args):
 
 def api_read(get, path):
     return get(path)
+
+
+JIRA_OPS_MAX = 40
+
+
+def jira_ops(_session, *terms):
+    """Search the pinned Jira v3 operation index (no network): every term must appear in the id, path or tag."""
+    try:
+        index = json.loads((pathlib.Path(__file__).resolve().parent.parent / "data" / "jira-v3-index.json").read_text())["ops"]
+    except (OSError, ValueError, KeyError) as e:
+        raise Fatal(f"cannot read the Jira operation index: {type(e).__name__}") from None
+    want = [t.lower() for t in terms]
+    rows = [{"op": k, "method": v["method"], "path": v["path"], "tier": v["tier"],
+             **({"experimental": True} if v.get("experimental") else {}), **({"deprecated": True} if v.get("deprecated") else {})}
+            for k, v in sorted(index.items()) if all(t in f"{k} {v['path']} {v['tag']}".lower() for t in want)]
+    return {"matches": len(rows), "shown": rows[:JIRA_OPS_MAX]}
 
 
 def main(argv, opener=None, run=run_command, env_file=ENV_FILE):

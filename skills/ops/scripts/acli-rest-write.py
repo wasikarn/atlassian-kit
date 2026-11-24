@@ -46,7 +46,7 @@ from acli_rest_common import (  # noqa: E402
     cloud_id, default_opener, http_request, read_env_file, run_command,
 )
 from rest_write_base import OPERATIONS, _check_flags, _one, canonical, parse_flags  # noqa: E402
-import rest_ops_confluence, rest_ops_jira_boards, rest_ops_jira_issues  # noqa: E402,F401  (each registers its operations)
+import rest_ops_confluence, rest_ops_jira_boards, rest_ops_jira_issues, rest_ops_jira_spec  # noqa: E402,F401  (each registers its operations)
 
 PRODUCT_BASE = {"jira": f"https://api.atlassian.com/ex/jira",
                 "confluence": f"https://api.atlassian.com/ex/confluence"}

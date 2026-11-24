@@ -8,6 +8,9 @@ Pre-`1.0.0`: breaking changes may land in any `0.x` release.
 This file starts at `0.1.18` — releases before that predate the changelog. See
 `git log` for the full history back to `0.1.0`.
 
+## [0.3.0] — 2026-11-24
+**Whole Jira v3 API through plan/apply.** New `jira-call` write operation driven by a pinned compact index of Atlassian's OpenAPI spec (630 operations: 280 reads, 137 write, 213 destructive tier; `skills/ops/data/jira-v3-index.json`, built by `gen_jira_index.py`). Validation from the index (operation id, path and query parameters, enums, required body fields), gates `--allow-destructive`, `--allow-experimental` and `--allow-deprecated`, a generic read-back (404 for delete, field compare for PUT, `self` link for create) that reports "sent but unverified" rather than guessing. `acli-rest-get.py jira-ops [TEXT ...]` searches the index offline. Hand-written operations stay and are named when a call would duplicate one. Multipart uploads and Jira Software (agile), JSM and Confluence v1 are not covered yet.
+
 ## [0.2.1] — 2026-11-24
 **Own marketplace.** `.claude-plugin/marketplace.json` makes this repo its own marketplace (name `atlassian-kit`), so it no longer depends on the `wasikarn` marketplace in `method-harness`. Install: `/plugin marketplace add wasikarn/atlassian-kit`, then `/plugin install atlassian-kit@atlassian-kit`; the `settings.json` key becomes `atlassian-kit@atlassian-kit`.
 

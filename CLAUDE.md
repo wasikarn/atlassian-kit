@@ -43,7 +43,8 @@ python3 skills/ops/scripts/md2adf.py somefile.md | python3 skills/ops/scripts/ad
   mode-600 `~/.claude/atlassian.env`), `acli-rest-write.py` (plan/apply entry: flags, target check, request file, confirm hash, apply with read-back; the
   operations live beside it: `rest_ops_confluence.py` (page-create/fetch/update/delete, attachment-upload),
   `rest_ops_jira_issues.py` (issue-set, issue-delete, version-create/edit/delete), `rest_ops_jira_boards.py`
-  (filter-create, board-columns-set, board-delete, board-property-set), over the shared registry in
+  (filter-create, board-columns-set, board-delete, board-property-set), `rest_ops_jira_spec.py` (`jira-call`: any
+  Jira v3 write from the pinned index `skills/ops/data/jira-v3-index.json`, built by `gen_jira_index.py`), over the shared registry in
   `rest_write_base.py`; a new operation is a new entry in one of them; write tokens from the same file).
   Wrappers: `acli-new.sh` (create from Markdown), `acli-set-desc.sh` (replace the whole
   description), `acli-edit.sh` (runs `acli-edit.py`), `acli-assign.sh` (assign by accountId via

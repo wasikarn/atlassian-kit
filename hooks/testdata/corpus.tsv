@@ -100,3 +100,6 @@ allow	rest-get-read	python3 skills/acli/scripts/acli-rest-get.py transitions APP
 deny	over-block-rg-mention-rest-write	rg -n "rest" skills/acli/scripts/acli-rest-write.py
 allow	must	git -C /work/atlassian-kit log --oneline -5
 deny	accepted	git -C /work/atlassian-kit diff -- skills/ops/scripts/acli-edit.sh
+allow	rest-get-jira-ops	python3 skills/ops/scripts/acli-rest-get.py jira-ops component delete
+deny	rest-write-jira-call-plan	python3 skills/ops/scripts/acli-rest-write.py plan jira-call --op createComponent --body '{}'
+deny	rest-write-jira-call-apply	python3 skills/ops/scripts/acli-rest-write.py apply request.json --confirm abcdef123456

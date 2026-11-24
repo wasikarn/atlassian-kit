@@ -384,7 +384,7 @@ def test_tokens_never_reach_stdout_or_stderr_on_error_paths():
 
 
 def test_registered_operations_match_the_plan_phases_so_far():
-    assert sorted(rw.OPERATIONS) == ["attachment-upload", "board-columns-set", "board-delete", "board-property-set", "filter-create", "issue-delete", "issue-set", "page-create", "page-delete", "page-fetch", "page-update",
+    assert sorted(rw.OPERATIONS) == ["attachment-upload", "board-columns-set", "board-delete", "board-property-set", "filter-create", "issue-delete", "issue-set", "jira-call", "page-create", "page-delete", "page-fetch", "page-update",
                                      "version-create", "version-delete", "version-edit"], sorted(rw.OPERATIONS)
     for name, op in rw.OPERATIONS.items():
         expected = {"product", "validate", "plan", "send", "readback"} if name != "page-fetch" else {"planOnly", "product", "validate", "plan"}
@@ -1439,6 +1439,7 @@ def _stored_args_for_every_operation():
         "filter-create": ({"name": "seed", "jql": "project = APPR"}, ()),
         "board-columns-set": ({"board": "1", "columns": "[{\"name\": \"a\", \"statuses\": []}]"}, ()),
         "board-delete": ({"board": "1"}, ()),
+        "jira-call": ({"op": "createComponent", "body": "{\"name\": \"seed\"}"}, ()),
         "board-property-set": ({"board": "1", "key": "k", "value": "1"}, ()),
         "version-create": ({"project": "APPR", "name": "seed"}, ()),
         "version-edit": ({"id": "18329", "released": "true", "archived": "false",
@@ -1788,6 +1789,64 @@ def test_board_delete_reports_sent_but_unverified_when_the_read_back_errors():
     code, _, err2, _ = run(["apply", str(request_path(out)), "--confirm", confirm_of(out)],
                            _board_routes(state) + [tenant_route()])
     assert code == 3 and "read-back" in err2 and state["deleted"] is True, err2
+
+
+# --- jira-call (0.3.0): spec-driven writes through the same plan/apply gate -------
+
+def _component_routes(state):
+    def route(req):
+        u, m = urllib.parse.urlsplit(req.full_url).path, req.get_method()
+        if m == "POST" and u.endswith("/rest/api/3/component"):
+            state["c"] = dict(json.loads(req.data.decode()), id="11", self=f"{JIRA}/rest/api/3/component/11")
+            return json.dumps(state["c"])
+        if m == "DELETE" and u.endswith("/rest/api/3/component/11"):
+            state["deleted"] = req.full_url
+            return ""
+        if m == "GET" and u.endswith("/rest/api/3/component/11"):
+            if state.get("deleted") or "c" not in state:
+                return urllib.error.HTTPError(req.full_url, 404, "nf", http.client.HTTPMessage(), io.BytesIO(b"{}"))
+            return json.dumps(state["c"])
+        raise AssertionError(f"unexpected {m} {u}")
+    return [(JIRA, route)]
+
+
+def test_jira_call_create_applies_once_and_verifies_through_the_self_link():
+    state = {}
+    code, out, err, op = run(["plan", "jira-call", "--op", "createComponent", "--body", '{"name": "api", "project": "APPR"}'],
+                             _component_routes(state) + [tenant_route()])
+    assert code == 0, err
+    assert "c" not in state, "plan must not write"
+    path, conf = request_path(out), confirm_of(out)
+    code, out2, err2, _ = run(["apply", str(path), "--confirm", conf], _component_routes(state) + [tenant_route()])
+    assert code == 0 and "verified by read-back" in out2, err2
+    assert state["c"]["name"] == "api" and not path.exists()
+
+
+def test_jira_call_delete_needs_the_gate_flag_then_deletes_and_verifies_by_404():
+    state = {"c": {"id": "11", "name": "api"}}
+    code, _, err, op = run(["plan", "jira-call", "--op", "deleteComponent", "--path", "id=11"],
+                           _component_routes(state) + [tenant_route()])
+    assert code == 1 and "--allow-destructive yes" in err
+    code, out, err, _ = run(["plan", "jira-call", "--op", "deleteComponent", "--path", "id=11", "--allow-destructive", "yes"],
+                            _component_routes(state) + [tenant_route()])
+    assert code == 0 and "IRREVERSIBLE" in out, err
+    assert "deleted" not in state, "plan must not delete"
+    path, conf = request_path(out), confirm_of(out)
+    code, _, err2, _ = run(["apply", str(path), "--confirm", conf], _component_routes(state) + [tenant_route()])
+    assert code == 0, err2
+    assert state["deleted"].endswith("/rest/api/3/component/11")
+
+
+def test_jira_call_apply_refuses_when_the_target_changed_after_the_plan():
+    state = {"c": {"id": "11", "name": "api"}}
+    code, out, err, _ = run(["plan", "jira-call", "--op", "deleteComponent", "--path", "id=11", "--allow-destructive", "yes"],
+                            _component_routes(state) + [tenant_route()])
+    assert code == 0, err
+    state["c"]["name"] = "renamed"
+    code, _, err2, _ = run(["apply", str(request_path(out)), "--confirm", confirm_of(out)],
+                           _component_routes(state) + [tenant_route()])
+    assert code != 0 and "live state changed" in err2
+    assert "deleted" not in state
 
 
 if __name__ == "__main__":
