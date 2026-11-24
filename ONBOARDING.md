@@ -1,4 +1,4 @@
-# Welcome to the jira-acli team
+# Welcome to the atlassian-kit team
 
 ## How We Use Claude
 
@@ -8,9 +8,9 @@ Work Type Breakdown:
   _TODO — no sessions were measured in this window; fill in once a normal work week is captured._
 
 Top Skills & Commands:
-  /jira-acli:acli  ████████████████████  installed (plugin skill)
-  /jira-acli:jira-content  ████████████████████  installed (plugin skill)
-  /jira-acli:confluence-content  ████████████████████  installed (plugin skill)
+  /atlassian-kit:ops  ████████████████████  installed (plugin skill)
+  /atlassian-kit:jira-content  ████████████████████  installed (plugin skill)
+  /atlassian-kit:confluence-content  ████████████████████  installed (plugin skill)
   _TODO — replace with measured usage._
 
 Top MCP Servers:
@@ -19,17 +19,17 @@ Top MCP Servers:
 ## Your Setup Checklist
 
 ### Codebases
-- [ ] jira-acli — github.com/wasikarn/jira-acli (this repo: the acli-first Jira/Confluence toolkit plugin)
+- [ ] atlassian-kit — github.com/wasikarn/atlassian-kit (this repo: the acli-first Jira/Confluence toolkit plugin)
 
 ### MCP Servers to Activate
 - [ ] _None required._ This repo works through the `acli` CLI plus the REST helper scripts in
-      `skills/acli/scripts/`, not MCP. The official Atlassian MCP plugin is a fallback for the
+      `skills/ops/scripts/`, not MCP. The official Atlassian MCP plugin is a fallback for the
       page-create/page-update gaps only — activate it only if a skill step routes you there.
 
 ### Skills to Know About
-- `/jira-acli:acli` — the mechanical driver for the `acli` CLI (search, view, edit, transition, bulk JQL, auth, ADF↔markdown). Mechanical/query/bulk work only.
-- `/jira-acli:jira-content` — author template-shaped Jira content (Bug/Story/Task/Epic/Sub-task, templated comments). Used before any create/edit of ticket *content*.
-- `/jira-acli:confluence-content` — Confluence Spec/PRD pages against the team template. Page create/update goes through the REST write scripts (plan/apply confirm flow).
+- `/atlassian-kit:ops` — the mechanical driver for the `acli` CLI (search, view, edit, transition, bulk JQL, auth, ADF↔markdown). Mechanical/query/bulk work only.
+- `/atlassian-kit:jira-content` — author template-shaped Jira content (Bug/Story/Task/Epic/Sub-task, templated comments). Used before any create/edit of ticket *content*.
+- `/atlassian-kit:confluence-content` — Confluence Spec/PRD pages against the team template. Page create/update goes through the REST write scripts (plan/apply confirm flow).
 - `/siang:*` — Thai text skills (humanize, technical-writing, thai-pua-repair) used when drafting Thai docs or repairing garbled Thai PDF text.
 
 ## Team Tips

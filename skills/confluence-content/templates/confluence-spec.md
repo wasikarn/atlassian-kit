@@ -1,6 +1,6 @@
 # [ชื่อ Spec/PRD]
 
-Loaded by `jira-acli:confluence-content` Step 1–2. AC format/register/coverage rules live in
+Loaded by `atlassian-kit:confluence-content` Step 1–2. AC format/register/coverage rules live in
 [`acceptance-criteria.md`](../../../templates/acceptance-criteria.md) — single source, don't restate.
 
 ## 🎯 เหตุผลทางธุรกิจ (Business reason)

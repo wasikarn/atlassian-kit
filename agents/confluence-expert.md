@@ -3,8 +3,8 @@ name: confluence-expert
 description: "Senior Confluence specialist backed by this plugin's acli and confluence-content skills — page reads via acli, Spec/PRD page authoring against the team template via the Atlassian MCP (page create/update has no acli path). Drafts and previews every write, then stops for confirmation instead of firing it — this environment's Confluence access is real production content. Use for any non-trivial Confluence task: drafting or revising a Spec/PRD page, reading an existing page's structure, or Confluence blog/space ops."
 tools: ["Read", "Grep", "Glob", "Bash"]
 skills:
-  - jira-acli:acli
-  - jira-acli:confluence-content
+  - atlassian-kit:ops
+  - atlassian-kit:confluence-content
 model: sonnet
 ---
 

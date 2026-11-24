@@ -1,14 +1,14 @@
 ---
 name: confluence-content
 description: "Create or edit the content of a Confluence Spec/PRD page against the team's canonical template (business reason, scope, per-requirement GWT Acceptance Criteria) — via the Atlassian MCP (acli's `confluence page` command is view-only, it can't create or update). Use this BEFORE calling createConfluenceContent/updateConfluenceContent (v1: createConfluencePage/updateConfluencePage) directly — never hand-build the page body."
-when_to_use: "Trigger on ANY intent to create/write/draft a Confluence page, spec, PRD, or design doc, or to edit/update/fix/revise an existing Confluence page's content — in Thai or English, not just literal phrases like 'สร้าง spec' (also matches 'write a spec for X', 'draft a PRD for Y', 'update the Confluence page for Z', 'add a section to the design doc'). Don't use for Jira issues (Bug/Story/Task/Epic/Sub-task/comments — see jira-acli:jira-content), Confluence blogs/spaces/admin ops, or viewing a page without editing it (see jira-acli:acli)."
+when_to_use: "Trigger on ANY intent to create/write/draft a Confluence page, spec, PRD, or design doc, or to edit/update/fix/revise an existing Confluence page's content — in Thai or English, not just literal phrases like 'สร้าง spec' (also matches 'write a spec for X', 'draft a PRD for Y', 'update the Confluence page for Z', 'add a section to the design doc'). Don't use for Jira issues (Bug/Story/Task/Epic/Sub-task/comments — see atlassian-kit:jira-content), Confluence blogs/spaces/admin ops, or viewing a page without editing it (see atlassian-kit:ops)."
 ---
 
 # Confluence Content
 
 Create or edit the **content** of a Confluence Spec/PRD page — against the team's canonical
 template. Jira and Confluence are different products with different content shapes; this skill
-owns Confluence only. Jira issue content is `jira-acli:jira-content`'s job.
+owns Confluence only. Jira issue content is `atlassian-kit:jira-content`'s job.
 
 **Backend: Atlassian MCP only** — acli's `confluence page` command is view-only, so
 `createConfluenceContent`/`updateConfluenceContent` are the only way to create or update a page. There is
@@ -19,14 +19,14 @@ no acli path here, unlike Jira. Template lives at
 parameter. On v2 the same choice is `body.format` in `body={"format": ..., "value": ...}`. Reads
 need `detail="full"` (without it you get a summary and no body), and an update needs the
 `snapshotToken` from that read. The call blocks below show v2 first; the parts of the v2 contract this plugin uses are in
-`acli/SKILL.md` § "When acli can't".
+`ops/SKILL.md` § "When acli can't".
 
 ## When to use this skill vs acli vs jira-content
 
 - **Use this skill** for creating or editing the content of a Confluence Spec/PRD page.
-- **Use `jira-acli:jira-content`** for Jira Bug/Story/Task/Epic/Sub-task content or templated
+- **Use `atlassian-kit:jira-content`** for Jira Bug/Story/Task/Epic/Sub-task content or templated
   comments — Jira work, not Confluence work.
-- **Use `jira-acli:acli`** for Confluence blog/space/admin ops, or viewing a page without editing
+- **Use `atlassian-kit:ops`** for Confluence blog/space/admin ops, or viewing a page without editing
   its content.
 
 ## Step 1 — Gather
@@ -53,7 +53,7 @@ caught.
 This search is easy to under-verify precisely because it's secondary to the page draft, not the
 task itself — confirmed gap (2026-08-04): a fixture run's search reported "30 hits" and moved
 straight to drafting without noticing `acli`'s own `--json`/`--csv` output silently caps at ~30
-rows (documented in `jira-acli:acli`'s SKILL.md); the true count was 395. No wrong fact reached
+rows (documented in `atlassian-kit:ops`'s SKILL.md); the true count was 395. No wrong fact reached
 the final page that time, but most of the matching tickets were never actually read. Before
 treating this search's result as the full picture, cross-check with `--count` or re-run with
 `--paginate` — same discipline `acli` already documents for its own reads, worth restating here
@@ -67,7 +67,7 @@ implying continuous tracking for a system that actually processes spend in discr
 increments; a second run reasoned its way past this exact rule ("this isn't really a Spec") and
 then invented every retry/backoff number in its Requirements/AC instead of running one read-only
 search. This is research, not authoring — any actual Jira write still routes through
-`jira-acli:jira-content`.
+`atlassian-kit:jira-content`.
 
 ## Step 2 — Format the content
 
@@ -85,8 +85,8 @@ Resolve at runtime; never hardcode IDs.
 
 | Field | Resolution |
 |---|---|
-| **Site / cloudId** | Re-derive against `acli/REFERENCE.md` + `acli/SKILL.md` § "When acli can't" before naming any `mcp__...` tool here. cloudId is MCP-only — resolve via `mcp__plugin_atlassian_atlassian__getAccessibleAtlassianResources`. Ask if several. **If you're an MCP-less caller (e.g. the `confluence-expert` agent, which holds no MCP tools by design)**, this field can never be resolved locally — name it as an outstanding gap in your handoff instead of guessing or skipping it. |
-| **Space** | `acli confluence space list --json` to resolve — acli has full space CRUD, but inconsistently: `create`/`archive`/`update`/`restore` all take `--key`, `view` alone takes `--id` (`space view --key` fails `✗ unknown flag: --key`, confirmed live 2026-07-24). ⚠️ **`--keys <KEY>` does not filter** — confirmed live 2026-08-04: it returns the same full unfiltered space list whether passed or omitted. Don't grab `.results[0].id` — match the target `key` explicitly instead: `acli confluence space list --json \| python3 -c "import json,sys; d=json.load(sys.stdin); print([r['id'] for r in d['results'] if r['key']=='<KEY>'][0])"`. Then `space view --id <id> --json` only if you need more than list already returned. Fall back to `mcp__plugin_atlassian_atlassian__listConfluenceSpaces` (v1: `getConfluenceSpaces`) (deferred on v2: reach it via `executeRead`, see `acli/SKILL.md` § "When acli can't") only if acli can't find it. Ask the user if ambiguous. |
+| **Site / cloudId** | Re-derive against `ops/REFERENCE.md` + `ops/SKILL.md` § "When acli can't" before naming any `mcp__...` tool here. cloudId is MCP-only — resolve via `mcp__plugin_atlassian_atlassian__getAccessibleAtlassianResources`. Ask if several. **If you're an MCP-less caller (e.g. the `confluence-expert` agent, which holds no MCP tools by design)**, this field can never be resolved locally — name it as an outstanding gap in your handoff instead of guessing or skipping it. |
+| **Space** | `acli confluence space list --json` to resolve — acli has full space CRUD, but inconsistently: `create`/`archive`/`update`/`restore` all take `--key`, `view` alone takes `--id` (`space view --key` fails `✗ unknown flag: --key`, confirmed live 2026-07-24). ⚠️ **`--keys <KEY>` does not filter** — confirmed live 2026-08-04: it returns the same full unfiltered space list whether passed or omitted. Don't grab `.results[0].id` — match the target `key` explicitly instead: `acli confluence space list --json \| python3 -c "import json,sys; d=json.load(sys.stdin); print([r['id'] for r in d['results'] if r['key']=='<KEY>'][0])"`. Then `space view --id <id> --json` only if you need more than list already returned. Fall back to `mcp__plugin_atlassian_atlassian__listConfluenceSpaces` (v1: `getConfluenceSpaces`) (deferred on v2: reach it via `executeRead`, see `ops/SKILL.md` § "When acli can't") only if acli can't find it. Ask the user if ambiguous. |
 | **Parent page** | Only if the user wants this nested under an existing page; resolve its page id (v2: `parent.parentContentId`; v1: `parentId`). Omit for a top-level page. |
 | **Title** | From the spec's subject; confirm with the user. |
 
@@ -197,7 +197,7 @@ never `"markdown"`. Markdown is only safe when the page has zero macro/expand no
    acli confluence page view --id <id> --body-format atlas_doc_format --json \
      | python3 -c "import json,sys; print(json.load(sys.stdin)['body']['atlas_doc_format']['value'])" \
      > page.adf.json
-   python3 "${CLAUDE_SKILL_DIR}/../acli/scripts/adf-node-diff.py" page.adf.json | grep -E "^(extension|expand):"
+   python3 "${CLAUDE_SKILL_DIR}/../ops/scripts/adf-node-diff.py" page.adf.json | grep -E "^(extension|expand):"
    → if either count is > 0, this page has macros — ADF write path only, skip step 3's markdown option.
    → empty output is only safe to read as "no macros" if adf-node-diff.py itself ran clean. It exits
    non-zero with FATAL on bad input, and that failure prints to stderr — stdout is empty either way, so
@@ -207,7 +207,7 @@ never `"markdown"`. Markdown is only safe when the page has zero macro/expand no
    → this walks the ADF tree recursively (every depth, not just top-level) — a shallow top-level-only
    count would miss a macro nested inside a table cell, panel, or layout section and falsely green-light
    a markdown write, reproducing the exact 2026-07-14 incident below on a different page shape.
-   python3 "${CLAUDE_SKILL_DIR}/../acli/scripts/adf2md.py" page.adf.json
+   python3 "${CLAUDE_SKILL_DIR}/../ops/scripts/adf2md.py" page.adf.json
    → read the current body as Markdown (for review/editing text — the ADF file is still the
    source of truth for the write). Falls back to mcp__plugin_atlassian_atlassian__getConfluenceContent (v1: `getConfluencePage`)
    only if acli is unavailable/unauthed — v2: (cloudId, content_id, content_format: "markdown",
@@ -303,8 +303,8 @@ version, update only on the user's explicit go-ahead.
 
 ## Related
 
-- `jira-acli:jira-content` — Jira Bug/Story/Task/Epic/Sub-task content and templated comments. The
+- `atlassian-kit:jira-content` — Jira Bug/Story/Task/Epic/Sub-task content and templated comments. The
   Jira-side counterpart to this skill.
-- `jira-acli:acli` — Confluence blog/space/admin ops, search, and view. Doesn't touch page content.
+- `atlassian-kit:ops` — Confluence blog/space/admin ops, search, and view. Doesn't touch page content.
 - `atlassian:spec-to-backlog` — converting a Confluence Spec/PRD page into a backlog of epics +
   tickets (needs the official Atlassian plugin installed).

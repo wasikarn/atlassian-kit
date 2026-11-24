@@ -1,6 +1,6 @@
 # Story — type-specific guide
 
-Loaded by `jira-acli:jira-content` Step 1–2. The shared metadata table, preview gate, and create commands live in `SKILL.md`; AC rules (including the Story-only coverage additions) live in [`acceptance-criteria.md`](../../../templates/acceptance-criteria.md) — this file holds only the Story-specific gather questions and Thai description template.
+Loaded by `atlassian-kit:jira-content` Step 1–2. The shared metadata table, preview gate, and create commands live in `SKILL.md`; AC rules (including the Story-only coverage additions) live in [`acceptance-criteria.md`](../../../templates/acceptance-criteria.md) — this file holds only the Story-specific gather questions and Thai description template.
 
 ## Step 1 — Gather (Story)
 

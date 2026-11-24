@@ -1,9 +1,9 @@
 # jira-content templates: Jira SSOT
 
 Every template that defines what a created/edited Jira ticket should contain lives here.
-`jira-acli:acli` is the mechanical backend these templates get sent through (ADF conversion,
+`atlassian-kit:ops` is the mechanical backend these templates get sent through (ADF conversion,
 `create --from-json`, MCP fallback). It owns none of this content. Confluence's template lives in
-the sibling `jira-acli:confluence-content` skill instead, since it is a different product.
+the sibling `atlassian-kit:confluence-content` skill instead, since it is a different product.
 
 Files here:
 

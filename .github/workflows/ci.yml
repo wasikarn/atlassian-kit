@@ -15,8 +15,8 @@ jobs:
       - name: ADF round-trip
         run: |
           printf '# sample\n\n- a\n- b\n' > "$RUNNER_TEMP/roundtrip.md"
-          python3 skills/acli/scripts/md2adf.py "$RUNNER_TEMP/roundtrip.md" \
-            | python3 skills/acli/scripts/adf2md.py -
+          python3 skills/ops/scripts/md2adf.py "$RUNNER_TEMP/roundtrip.md" \
+            | python3 skills/ops/scripts/adf2md.py -
       # suites exit non-zero on their own; the loop reports and fails the job
       - name: test suites
         run: |

@@ -6,4 +6,4 @@ set -euo pipefail
 __src="${BASH_SOURCE[0]:-$0}"
 __dir="$(cd "$(dirname "$__src")" && pwd)"
 __root="$(cd "${__dir}/../../.." && pwd)"
-exec python3 "${__root}/skills/acli/scripts/md2adf.py" "$@"
+exec python3 "${__root}/skills/ops/scripts/md2adf.py" "$@"

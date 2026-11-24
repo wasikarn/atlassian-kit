@@ -1,5 +1,5 @@
-> **Content templates live in `jira-acli:jira-content` § `templates/` (Bug/Story/Task/Epic/
-> Sub-task, comments) and `jira-acli:confluence-content` § `templates/` (Confluence Spec/PRD).**
+> **Content templates live in `atlassian-kit:jira-content` § `templates/` (Bug/Story/Task/Epic/
+> Sub-task, comments) and `atlassian-kit:confluence-content` § `templates/` (Confluence Spec/PRD).**
 > This directory is the acli **mechanics** reference —
 > ADF/XHTML shape, the `--from-json` vs flag distinction, and the two different Confluence content
 > models. It has no opinion on what a ticket's content should say.
@@ -86,7 +86,7 @@ acli confluence blog create --space-id 12345 --title "X" \
 ```
 Why: Confluence's storage format is XHTML, the inverse of Jira. ADF here renders as literal JSON text.
 
-**`createConfluenceContent`/`updateConfluenceContent` (v1: `createConfluencePage`/`updateConfluencePage`) (MCP, the only way to create/update a *page* — acli's `confluence page` is view-only) is a different content model entirely:** the body format (v2 `body.format`, v1 `contentFormat`) is `"html"` (Confluence's own HTML+ dialect — `data-type` attributes for panels/status/task-lists/etc., NOT the same thing as `blog create`'s storage XHTML), `"markdown"`, or `"adf"`. For a plain document with headings/lists/bold — no Confluence-specific panels/macros — use the `"markdown"` format and the raw Markdown body directly; skip hand-authoring HTML or ADF entirely. Template for this → `jira-acli:confluence-content` § `templates/confluence-spec.md`.
+**`createConfluenceContent`/`updateConfluenceContent` (v1: `createConfluencePage`/`updateConfluencePage`) (MCP, the only way to create/update a *page* — acli's `confluence page` is view-only) is a different content model entirely:** the body format (v2 `body.format`, v1 `contentFormat`) is `"html"` (Confluence's own HTML+ dialect — `data-type` attributes for panels/status/task-lists/etc., NOT the same thing as `blog create`'s storage XHTML), `"markdown"`, or `"adf"`. For a plain document with headings/lists/bold — no Confluence-specific panels/macros — use the `"markdown"` format and the raw Markdown body directly; skip hand-authoring HTML or ADF entirely. Template for this → `atlassian-kit:confluence-content` § `templates/confluence-spec.md`.
 
 ---
 

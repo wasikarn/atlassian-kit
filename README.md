@@ -1,4 +1,4 @@
-# jira-acli
+# atlassian-kit
 
 An acli-first Jira/Confluence toolkit for Claude Code: bulk work-item ops via JQL,
 ADF↔markdown conversion, and template-conforming content authoring for both Jira
@@ -57,9 +57,9 @@ This plugin is **not self-contained**. It needs, installed separately:
    primary backend for `acli` and `jira-content`.
 2. **The official Atlassian plugin** (provides the `mcp__plugin_atlassian_atlassian__*`
    MCP tools) — used as a fallback for the handful of things `acli` genuinely can't do
-   yet (see `skills/acli/SKILL.md` § "When acli can't"), by `jira-content` when `acli`
+   yet (see `skills/ops/SKILL.md` § "When acli can't"), by `jira-content` when `acli`
    is unavailable or can't set a required field, and as the **only** backend for
-   `confluence-content` (a REST helper covers the write gaps). Status (2026-11-19): the MCP is unavailable here (blocked token); `skills/acli/scripts/acli-rest-write.py` covers the write gaps (page create/update, priority/parent/fixVersions, version create) in plan-apply form — its first live write currently waits on site permissions, granted by the site admin.
+   `confluence-content` (a REST helper covers the write gaps). Status (2026-11-19): the MCP is unavailable here (blocked token); `skills/ops/scripts/acli-rest-write.py` covers the write gaps (page create/update, priority/parent/fixVersions, version create) in plan-apply form — its first live write currently waits on site permissions, granted by the site admin.
 
 No skill ships its own `.mcp.json` — bundling one for a fallback path would mean
 duplicating credentials and rewriting every MCP tool literal for no functional gain.
@@ -68,10 +68,10 @@ duplicating credentials and rewriting every MCP tool literal for no functional g
 
 ```
 /plugin marketplace add wasikarn/method-harness
-/plugin install jira-acli@wasikarn
+/plugin install atlassian-kit@wasikarn
 ```
 
-Ships `defaultEnabled: false` — add `"jira-acli@wasikarn": true` to your Claude Code
+Ships `defaultEnabled: false` — add `"atlassian-kit@wasikarn": true` to your Claude Code
 `settings.json` after install, then restart.
 
 ## Versioning

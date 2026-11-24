@@ -5,7 +5,7 @@
 **Severity:** By design (documented limitation)  
 **Impact:** Description ใน Jira ที่มี nested list (bullet list ข้างใน ordered list) จะถูก flatten เป็น sibling lists แทนที่จะเป็น child lists  
 **Affected files:**
-- `skills/acli/scripts/md2adf.py`
+- `skills/ops/scripts/md2adf.py`
 - ทุก workflow ที่ใช้ `md2adf.py` → `acli jira workitem edit/create --from-json`
 
 **Symptom:**
@@ -78,12 +78,12 @@ mcp__plugin_atlassian_atlassian__getJiraIssue → fields.labels: ["ready-for-age
 
 ## Issue 4: `acli jira workitem create --description-file`/`--description` เรียกตรงห่อ plain text เป็น ADF paragraph เดียว ไม่มี template
 
-**Severity:** High (root cause คือไม่รู้ว่า `jira-acli` มีอยู่ ไม่ใช่ bug ของ acli เอง)
-**Impact:** เรียก `acli jira workitem create --description-file`/`--description` ตรง ๆ โดยไม่ผ่าน `jira-acli:jira-content` จะห่อ plain text เป็น ADF `paragraph` node เดียว (ไม่มี heading/list ตาม template) และ create ไม่มี `--priority` flag ให้ตั้งเลย
+**Severity:** High (root cause คือไม่รู้ว่า `atlassian-kit` มีอยู่ ไม่ใช่ bug ของ acli เอง)
+**Impact:** เรียก `acli jira workitem create --description-file`/`--description` ตรง ๆ โดยไม่ผ่าน `atlassian-kit:jira-content` จะห่อ plain text เป็น ADF `paragraph` node เดียว (ไม่มี heading/list ตาม template) และ create ไม่มี `--priority` flag ให้ตั้งเลย
 **Affected commands:**
-- `acli jira workitem create --description-file <file>` / `--description <text>` เรียกตรงจากภายนอก `jira-acli:jira-content`
+- `acli jira workitem create --description-file <file>` / `--description <text>` เรียกตรงจากภายนอก `atlassian-kit:jira-content`
 
-**Symptom:** (พบตอนสร้าง PROJ-809/PROJ-806, 2026-07-06 — เรียกจากภายใน `kbg:to-prd` ซึ่งไม่รู้ว่า `jira-acli` มีอยู่)
+**Symptom:** (พบตอนสร้าง PROJ-809/PROJ-806, 2026-07-06 — เรียกจากภายใน `kbg:to-prd` ซึ่งไม่รู้ว่า `atlassian-kit` มีอยู่)
 - description flatten เป็น ADF `paragraph` node เดียว (ยืนยันจากอ่าน raw ADF)
 - template shape ผิด (PRD shape ทั่วไป แทนที่จะเป็น canonical Bug/Task template)
 - priority ค้างที่ default ของ Jira — ต้องแก้ด้วยมือทีหลัง
@@ -91,18 +91,18 @@ mcp__plugin_atlassian_atlassian__getJiraIssue → fields.labels: ["ready-for-age
 
 ต้อง reformat + re-verify ทั้ง 2 ticket ทีหลัง
 
-**Workaround / Prevention:** ห้ามเรียก `acli jira workitem create --description-file`/`--description` ตรง ๆ จากที่ไหนก็ตาม รวมถึงจาก skill อื่นที่บอกให้ "publish to tracker/backlog" — ต้องผ่าน `jira-acli:jira-content` เสมอเพื่อ reshape เป็น canonical template ก่อน (routing rule แบบเต็มอยู่ที่ root `~/.claude/CLAUDE.md` § "Atlassian / Jira & Confluence Work")
+**Workaround / Prevention:** ห้ามเรียก `acli jira workitem create --description-file`/`--description` ตรง ๆ จากที่ไหนก็ตาม รวมถึงจาก skill อื่นที่บอกให้ "publish to tracker/backlog" — ต้องผ่าน `atlassian-kit:jira-content` เสมอเพื่อ reshape เป็น canonical template ก่อน (routing rule แบบเต็มอยู่ที่ root `~/.claude/CLAUDE.md` § "Atlassian / Jira & Confluence Work")
 
 ---
 
 ## Issue 5: `md2adf.py` ไม่ handle markdown table syntax — flatten เป็น plain text แทน real ADF table
 
-**Status: FIXED (2026-07-15)** — `md2adf.py` parse GFM table syntax (`| a | b |` + `|---|---|`) เป็น ADF `table`/`tableRow`/`tableHeader`/`tableCell` node จริงแล้ว, schema ยืนยันตรงกับ node จริงที่ Jira ส่งกลับมา (`attrs: {isNumberColumnEnabled, layout}` บน table, `attrs: {}` + `paragraph` wrapper บน cell). รองรับ inline formatting ใน cell (code/bold/link ฯลฯ ผ่าน `inline()` เดิม), pipe escape (`\|`) ใน cell, และ ragged row (pad ให้เท่า header width). Regression test: `skills/acli/scripts/test_md2adf.py` (`python3 test_md2adf.py`, 7 assert-based case ไม่ใช้ framework) — validated แบบ end-to-end กับ PROJ-820 จริง (8 tables/33 rows/113 cells/35 headers) ผ่าน round-trip `adf2md.py` → `md2adf.py` → node-count diff กับ live ADF ตรงทุกตัว. Workaround ด้านล่าง (pre-check + ADF passthrough) ยัง valid สำหรับ description ที่มี node type อื่นที่ parser ยังไม่รองรับ (เช่น `expand`, `panel`, `extension`/macro) — table เป็นช่องโหว่เดียวที่ปิดแล้ว ไม่ใช่ทุกช่องโหว่ของ full-body replace. **2026-07-15:** node-count/byte-exact-diff snippet ด้านล่างนี้ (ที่เคยพิมพ์ใหม่ inline ทุกครั้ง) ทำเป็น script แล้ว: `skills/acli/scripts/adf-node-diff.py` (`FILE.json` = นับ node type; `OLD.json NEW.json` = diff + byte-exact check) รับได้ทั้ง bare ADF doc และ acli view payload ตรงๆ (auto-extract `fields.description`) — regression test: `scripts/test_adf_node_diff.py`.
+**Status: FIXED (2026-07-15)** — `md2adf.py` parse GFM table syntax (`| a | b |` + `|---|---|`) เป็น ADF `table`/`tableRow`/`tableHeader`/`tableCell` node จริงแล้ว, schema ยืนยันตรงกับ node จริงที่ Jira ส่งกลับมา (`attrs: {isNumberColumnEnabled, layout}` บน table, `attrs: {}` + `paragraph` wrapper บน cell). รองรับ inline formatting ใน cell (code/bold/link ฯลฯ ผ่าน `inline()` เดิม), pipe escape (`\|`) ใน cell, และ ragged row (pad ให้เท่า header width). Regression test: `skills/ops/scripts/test_md2adf.py` (`python3 test_md2adf.py`, 7 assert-based case ไม่ใช้ framework) — validated แบบ end-to-end กับ PROJ-820 จริง (8 tables/33 rows/113 cells/35 headers) ผ่าน round-trip `adf2md.py` → `md2adf.py` → node-count diff กับ live ADF ตรงทุกตัว. Workaround ด้านล่าง (pre-check + ADF passthrough) ยัง valid สำหรับ description ที่มี node type อื่นที่ parser ยังไม่รองรับ (เช่น `expand`, `panel`, `extension`/macro) — table เป็นช่องโหว่เดียวที่ปิดแล้ว ไม่ใช่ทุกช่องโหว่ของ full-body replace. **2026-07-15:** node-count/byte-exact-diff snippet ด้านล่างนี้ (ที่เคยพิมพ์ใหม่ inline ทุกครั้ง) ทำเป็น script แล้ว: `skills/ops/scripts/adf-node-diff.py` (`FILE.json` = นับ node type; `OLD.json NEW.json` = diff + byte-exact check) รับได้ทั้ง bare ADF doc และ acli view payload ตรงๆ (auto-extract `fields.description`) — regression test: `scripts/test_adf_node_diff.py`.
 
 **Severity:** High (silent structural data loss บน full-body description replace, ไม่ใช่แค่ misleading display แบบ Issue 1/3)
 **Impact:** `md2adf.py` ไม่ parse markdown table (`| a | b |` + `| --- | --- |`) เป็น ADF `table`/`tableRow`/`tableCell`/`tableHeader` nodes เลย — แปลงเป็น `paragraph` ธรรมดาที่มี literal `|` characters แทน ถ้า description เดิมมี real ADF table (จาก UI หรือ process อื่น) แล้วรัน `acli-set-desc.sh`/`acli jira workitem edit --from-json` แบบ full-body replace ด้วย markdown ที่เขียน table ใหม่ ตาราง**ทั้งหมดจะหายและกลายเป็น text พังบน Jira**
 **Affected files:**
-- `skills/acli/scripts/md2adf.py`
+- `skills/ops/scripts/md2adf.py`
 - ทุก workflow ที่ full-body replace ผ่าน `acli-set-desc.sh` / `md2adf.py desc.md > wi.json && acli jira workitem edit --from-json`
 
 **Symptom:** (พบระหว่างแก้ PROJ-820 sub-task ของ PROJ-807, 2026-07-14 — จับได้ก่อนเขียนจริง ไม่ใช่หลัง)
@@ -136,7 +136,7 @@ print('table count:', count_tables(d['fields']['description'] or {}))
 
 ## Issue 6: `acli jira workitem assign --assignee <accountId>` silently unassigns, but `edit --from-json` resolves the same accountId correctly
 
-**Status: FIXED (2026-07-15)** — the dedicated `assign` subcommand's accountId bug is real (see below), but it's scoped to that one subcommand, not to acli as a whole. `acli jira workitem edit --from-json` accepts a plain accountId string in the `assignee` field and resolves it correctly — verified against two different accounts (self-assign + a teammate), both confirmed via `view --json` afterward. New wrapper: `skills/acli/scripts/acli-assign.sh KEY ACCOUNT_ID`. This closes what `SKILL.md` previously documented as an MCP-only gap ("When acli can't" § Assign by accountId) — assigning a known accountId no longer needs the Atlassian MCP at all. **Resolving** an accountId from a name/privacy-hidden email in the first place is still genuinely MCP-only (`lookupJiraAccountId`, no acli equivalent) — that part of the old gap still stands.
+**Status: FIXED (2026-07-15)** — the dedicated `assign` subcommand's accountId bug is real (see below), but it's scoped to that one subcommand, not to acli as a whole. `acli jira workitem edit --from-json` accepts a plain accountId string in the `assignee` field and resolves it correctly — verified against two different accounts (self-assign + a teammate), both confirmed via `view --json` afterward. New wrapper: `skills/ops/scripts/acli-assign.sh KEY ACCOUNT_ID`. This closes what `SKILL.md` previously documented as an MCP-only gap ("When acli can't" § Assign by accountId) — assigning a known accountId no longer needs the Atlassian MCP at all. **Resolving** an accountId from a name/privacy-hidden email in the first place is still genuinely MCP-only (`lookupJiraAccountId`, no acli equivalent) — that part of the old gap still stands.
 
 **Severity:** Low (workaround was already known and cheap — one MCP call — but the acli-first path is now closed too)
 **Impact:** Before this fix, any accountId-based assignment routed through the Atlassian MCP, which requires that plugin be installed/authed separately from acli. Now it's a pure acli path.
@@ -149,7 +149,7 @@ acli jira workitem assign --key PROJ-880 --assignee "712020:<account-id>"
 
 **Working path (found 2026-07-15, while assigning PROJ-880/PROJ-882/PROJ-539 for real during a PROJ-807 readiness check):**
 ```bash
-bash skills/acli/scripts/acli-assign.sh PROJ-880 "712020:<account-id>"
+bash skills/ops/scripts/acli-assign.sh PROJ-880 "712020:<account-id>"
 # → SUCCESS - Work item PROJ-880 has been successfully edited
 # under the hood: acli jira workitem edit --from-json '{"issues":["PROJ-880"],"assignee":"712020:<account-id>"}' --yes
 ```
@@ -168,11 +168,11 @@ bash skills/acli/scripts/acli-assign.sh PROJ-880 "712020:<account-id>"
 - **Found while fixing the above:** `scripts/acli-ls.sh`'s default `--fields` list included `parent`, but `search --fields` unconditionally rejects it (`✗ Error: field 'parent' is not allowed`) — reproduced against every JQL/issue-type combination tried, not scoped to sub-tasks. This meant `acli-ls.sh` errored out on *every* invocation, not just ones needing pagination — a bigger break than the truncation bug it was ostensibly demonstrating.
 
 **Affected files:**
-- `skills/acli/SKILL.md` (Core loop, "When acli can't")
-- `skills/acli/REFERENCE.md` (§ search, § transition, § view)
-- `skills/acli/references/REFERENCE-detail.md` (transition flags)
+- `skills/ops/SKILL.md` (Core loop, "When acli can't")
+- `skills/ops/REFERENCE.md` (§ search, § transition, § view)
+- `skills/ops/references/REFERENCE-detail.md` (transition flags)
 - `agents/jira-expert.md` (Hard rule 1 — read-only command list)
-- `skills/acli/scripts/acli-ls.sh`
+- `skills/ops/scripts/acli-ls.sh`
 
 **Symptom:**
 ```bash
@@ -197,8 +197,8 @@ acli jira workitem search --jql "project = PROJ AND statusCategory != Done" --co
 
 **Affected files:**
 - `skills/confluence-content/SKILL.md` (Step 3, Space row)
-- `skills/acli/REFERENCE.md` (§ confluence/admin)
-- `skills/acli/references/REFERENCE-detail.md` (no `confluence space` section existed before this fix)
+- `skills/ops/REFERENCE.md` (§ confluence/admin)
+- `skills/ops/references/REFERENCE-detail.md` (no `confluence space` section existed before this fix)
 
 **Symptom:**
 ```bash
@@ -209,7 +209,7 @@ acli confluence space view --id <space-id> --json  # works
 
 **Workaround:** resolve the numeric id first via `space list --json`, matching the target `key` client-side (`python3 -c "import json,sys; d=json.load(sys.stdin); print([r['id'] for r in d['results'] if r['key']=='<KEY>'][0])"`), then `space view --id <id>` only if you need more detail than `list` already returned.
 
-**Status:** Fixed 2026-07-24 (this pass — corrected the Step 3 example in `confluence-content/SKILL.md`, `acli/REFERENCE.md`, and added a verified `confluence space` per-flag section to `acli/references/REFERENCE-detail.md`). Same drift class as Issue 7 — a documented flag that either never existed as written or silently diverged from the rest of its command family, caught only by actually running it against the live 1.3.22-stable binary.
+**Status:** Fixed 2026-07-24 (this pass — corrected the Step 3 example in `confluence-content/SKILL.md`, `ops/REFERENCE.md`, and added a verified `confluence space` per-flag section to `acli/references/REFERENCE-detail.md`). Same drift class as Issue 7 — a documented flag that either never existed as written or silently diverged from the rest of its command family, caught only by actually running it against the live 1.3.22-stable binary.
 
 **Addendum (2026-08-04):** the 2026-07-24 fix's own workaround was itself incomplete — it assumed `--keys <KEY>` filters the response, so `.results[0].id` would be the match. Confirmed live it does not: `space list --keys <space-key> --json` and `space list --json` (no `--keys` at all) return the identical unfiltered 15-space list. For `<space-key>`, `.results[0]` is a different space (`<other-space-key>`, id `<other-space-id>`) — blindly grabbing it would resolve the wrong space. Corrected in the same 3 files above (this time actually testing the filter, not just the flag's existence) to match `key` client-side instead of trusting result order.
 

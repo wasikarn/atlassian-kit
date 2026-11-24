@@ -6,4 +6,4 @@ set -euo pipefail
 __src="${BASH_SOURCE[0]:-$0}"
 __dir="$(cd "$(dirname "$__src")" && pwd)"
 __root="$(cd "${__dir}/../../.." && pwd)"
-exec bash "${__root}/skills/acli/scripts/acli-set-desc.sh" "$@"
+exec bash "${__root}/skills/ops/scripts/acli-set-desc.sh" "$@"

@@ -12,12 +12,12 @@ check. Local checks:
 python3 -m py_compile skills/*/scripts/*.py
 for f in skills/*/scripts/*.sh; do bash -n "$f"; done
 for t in skills/*/scripts/test_*.py hooks/test_*.py; do python3 "$t" || echo "FAILED: $t"; done
-python3 skills/acli/scripts/md2adf.py somefile.md | python3 skills/acli/scripts/adf2md.py -   # round-trip
+python3 skills/ops/scripts/md2adf.py somefile.md | python3 skills/ops/scripts/adf2md.py -   # round-trip
 ```
 
 ## Layout
 
-- `skills/acli` — the mechanical tool (search, view, edit, transition, bulk, Confluence, auth,
+- `skills/ops` — the mechanical tool (search, view, edit, transition, bulk, Confluence, auth,
   ADF↔Markdown). `skills/jira-content` — Jira templates (Bug/Story/Task/Epic/Sub-task, comments).
   `skills/confluence-content` — Spec/PRD template plus `scripts/inject-mermaid-macros.py`.
 - `agents/jira-expert.md`, `agents/confluence-expert.md` — preview-then-stop subagents: they hold
@@ -34,7 +34,7 @@ python3 skills/acli/scripts/md2adf.py somefile.md | python3 skills/acli/scripts/
 - `templates/acceptance-criteria.md` — the one rule both content skills share; referenced, never
   copied (copies drifted across 5+ files before).
 - Scripts: `md2adf.py` (Markdown subset → ADF; nested lists flattened by design, see
-  `skills/acli/ISSUES.md` Issue 1), `adf2md.py` (inverse; takes an ADF doc, a view payload as a
+  `skills/ops/ISSUES.md` Issue 1), `adf2md.py` (inverse; takes an ADF doc, a view payload as a
   dict or a list of them, or a create payload; owns `read_json`), `acli-edit.py` (section-level
   read-modify-write, since `acli edit --description` replaces the body), `acli-ls.py`
   (normalized search table, unwraps every search shape acli has emitted), `acli-rest-get.py`
@@ -59,7 +59,7 @@ python3 skills/acli/scripts/md2adf.py somefile.md | python3 skills/acli/scripts/
 - **Fail loud:** scripts exit non-zero with `FATAL:` on unknown field/label/type; never drop and retry.
 - **Preview before mutate:** bulk ops preview via the same `--jql`; creates render the payload with
   `adf2md.py` first. Replicate in any new writing script.
-- **acli first, Atlassian MCP only for the gaps listed in `skills/acli/SKILL.md` § "When acli
+- **acli first, Atlassian MCP only for the gaps listed in `skills/ops/SKILL.md` § "When acli
   can't"** (page create/update are MCP-only). Update that list before using MCP elsewhere.
 - **Cross-skill coupling:** `jira-content` wraps `acli` scripts via `../../..` climbs; an ADF or
   script-interface change in `acli` must be checked there. New wrappers resolve their dir with
@@ -69,7 +69,7 @@ python3 skills/acli/scripts/md2adf.py somefile.md | python3 skills/acli/scripts/
 
 ### Issue tracker
 
-Issues live in GitHub Issues on wasikarn/jira-acli, via the `gh` CLI. See `docs/agents/issue-tracker.md`.
+Issues live in GitHub Issues on wasikarn/atlassian-kit, via the `gh` CLI. See `docs/agents/issue-tracker.md`.
 
 ### Triage labels
 

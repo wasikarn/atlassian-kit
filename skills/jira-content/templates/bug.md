@@ -1,6 +1,6 @@
 # Bug — type-specific guide
 
-Loaded by `jira-acli:jira-content` Step 1–2. The shared metadata table, preview gate, and create commands live in `SKILL.md`; AC rules live in [`acceptance-criteria.md`](../../../templates/acceptance-criteria.md) — this file holds only the Bug-specific gather questions and Thai description template.
+Loaded by `atlassian-kit:jira-content` Step 1–2. The shared metadata table, preview gate, and create commands live in `SKILL.md`; AC rules live in [`acceptance-criteria.md`](../../../templates/acceptance-criteria.md) — this file holds only the Bug-specific gather questions and Thai description template.
 
 ## Step 1 — Gather (Bug)
 

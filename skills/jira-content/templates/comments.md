@@ -10,7 +10,7 @@ headings-and-sections overhead, just the purpose the comment serves. Same wordin
 work-item templates: Thai, plain, one idea per line, no vague language.
 
 A **trivial one-line comment** doesn't need a template — just call `acli jira workitem comment
-create --key KEY-1 --body "..."` directly (see `jira-acli:acli`). These four are for a comment
+create --key KEY-1 --body "..."` directly (see `atlassian-kit:ops`). These four are for a comment
 that has real structure to it.
 
 **Ground rules (why these four shapes, not free-form comments):**
@@ -23,11 +23,11 @@ that has real structure to it.
 - **Every comment should leave the reader knowing what happens next**, not just what happened —
   a status update without "ขั้นตอนถัดไป" is a log entry no one can act on.
 - **No unresolved dates.** "คาดว่าจะเสร็จ" and any other date field: state it if known, leave it
-  blank if not — never guess a date to fill the field (see `jira-acli:acli`'s METHODOLOGY: fail
+  blank if not — never guess a date to fill the field (see `atlassian-kit:ops`'s METHODOLOGY: fail
   loud, never silently drop or invent a value).
 
 Send any of these through the comment ADF pipeline — `comment create` and `comment update` take
-ADF differently, don't assume they match (see `jira-acli:acli` § Description format):
+ADF differently, don't assume they match (see `atlassian-kit:ops` § Description format):
 
 ```bash
 bash "${CLAUDE_SKILL_DIR}/scripts/md2adf.sh" note.md > /tmp/note.json   # bare doc mode — no -s/-p/-t

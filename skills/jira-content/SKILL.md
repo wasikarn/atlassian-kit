@@ -1,20 +1,20 @@
 ---
 name: jira-content
 description: "Create or edit template-shaped Jira content — Bug/Story/Task/Epic/Sub-task descriptions and templated comments (status update/QA verification/blocker/decision record) — against the team's REQUIRED formats (GWT Acceptance Criteria, Thai PO/QA structure), whether acli or the Atlassian MCP does the write. Use BEFORE calling `acli jira workitem create/edit` or any Jira-create MCP tool — never hand-build template-shaped content."
-when_to_use: "Trigger on ANY intent to create/file/open/log/report/raise a bug, defect, issue, story, task, epic, or sub-task, or to write/format/fix a Jira issue's description or a structured comment — Thai or English, e.g. 'สร้างบั๊ก', 'แตก sub-task ให้หน่อย', 'file a bug for X', 'open a ticket about Y', 'add a status update to PROJ-123', 'คอมเมนต์อัปเดตความคืบหน้า PROJ-123'. Also trigger when ANOTHER skill's instructions say 'publish this to the tracker/backlog' or 'file this PRD as an issue' — a foreign content shape (PRD, code-review finding, to-do) is never the Jira template; convert to this skill's shape first, don't pass it straight to acli/MCP. Don't use for Confluence pages/specs/PRDs (jira-acli:confluence-content), or for search, view, transition, link, clone, bulk ops, JQL export, Confluence blog/space/admin, or a trivial one-line comment (jira-acli:acli)."
+when_to_use: "Trigger on ANY intent to create/file/open/log/report/raise a bug, defect, issue, story, task, epic, or sub-task, or to write/format/fix a Jira issue's description or a structured comment — Thai or English, e.g. 'สร้างบั๊ก', 'แตก sub-task ให้หน่อย', 'file a bug for X', 'open a ticket about Y', 'add a status update to PROJ-123', 'คอมเมนต์อัปเดตความคืบหน้า PROJ-123'. Also trigger when ANOTHER skill's instructions say 'publish this to the tracker/backlog' or 'file this PRD as an issue' — a foreign content shape (PRD, code-review finding, to-do) is never the Jira template; convert to this skill's shape first, don't pass it straight to acli/MCP. Don't use for Confluence pages/specs/PRDs (atlassian-kit:confluence-content), or for search, view, transition, link, clone, bulk ops, JQL export, Confluence blog/space/admin, or a trivial one-line comment (atlassian-kit:ops)."
 ---
 
 # Jira Content
 
-Create or edit the **content** of a Jira Bug/Story/Task/Epic/Sub-task, or a templated comment — against the team's canonical templates. Defaults to the **PROJ board** when the user doesn't name a project; works on any project / Atlassian site. Jira only — Confluence pages/specs are `jira-acli:confluence-content`'s job.
+Create or edit the **content** of a Jira Bug/Story/Task/Epic/Sub-task, or a templated comment — against the team's canonical templates. Defaults to the **PROJ board** when the user doesn't name a project; works on any project / Atlassian site. Jira only — Confluence pages/specs are `atlassian-kit:confluence-content`'s job.
 
-**Backend: acli-first with Atlassian MCP fallback** — `jira-acli:acli` is the mechanical tool this skill drives. This skill owns *what goes in the body*. Templates in `${CLAUDE_SKILL_DIR}/templates/` — see [`templates/README.md`](templates/README.md) for the index.
+**Backend: acli-first with Atlassian MCP fallback** — `atlassian-kit:ops` is the mechanical tool this skill drives. This skill owns *what goes in the body*. Templates in `${CLAUDE_SKILL_DIR}/templates/` — see [`templates/README.md`](templates/README.md) for the index.
 
 ## When to use this skill vs acli vs confluence-content
 
 - **This skill** — create/edit Jira Bug/Story/Task/Epic/Sub-task content or a templated comment.
-- **`jira-acli:confluence-content`** — Confluence Spec/PRD page.
-- **`jira-acli:acli`** — search, view, transition, link, clone, bulk ops, JQL export, Confluence blog/space/admin, trivial one-line comments.
+- **`atlassian-kit:confluence-content`** — Confluence Spec/PRD page.
+- **`atlassian-kit:ops`** — search, view, transition, link, clone, bulk ops, JQL export, Confluence blog/space/admin, trivial one-line comments.
 
 ## Step 1 — Pick the type and gather
 
@@ -43,20 +43,20 @@ Write the body in **Thai** using the matching template. **AC format/register/cov
 *(Skip for comments.)* Resolve at runtime; never hardcode IDs except the default project key `PROJ`.
 
 - **Site** — `acli jira auth status`. For MCP, `mcp__plugin_atlassian_atlassian__getAccessibleAtlassianResources`. Ask if several.
-- **Project key** — User request; default `PROJ` only when the content is plausibly work for that project. If the ticket is clearly about something else (a different product, a personal project, generic content with no signal for that project), ask for the real project key instead of silently filing it under `PROJ` — the default is a convenience for the common case, not a license to guess the project. Validate via `acli jira project view --key <KEY>` before create. Fall back to `mcp__plugin_atlassian_atlassian__listJiraProjects` (v1: `getVisibleJiraProjects`) (deferred on v2: `executeRead(name="listJiraProjects", cloudId=…, inputs={"action": "create"})` lists projects you can create in, see `acli/SKILL.md` § "When acli can't") only if acli is unavailable/unauthed.
-- **Issue type** — Matches Step 1's pick. acli has no issue-type-metadata command; confirm via `mcp__plugin_atlassian_atlassian__listJiraProjectIssueTypesMetadata` (v1: `getJiraProjectIssueTypesMetadata`) (deferred on v2: reach it via `executeRead`, see `acli/SKILL.md` § "When acli can't") if create rejects. If the project key is still unresolved among multiple plausible candidates, check issue-type support on those candidates proactively (same MCP call) before asking the user to pick — narrowing "which of these projects" down to only the ones that actually support the requested type is a more useful question than a blind pick-one-of-N.
+- **Project key** — User request; default `PROJ` only when the content is plausibly work for that project. If the ticket is clearly about something else (a different product, a personal project, generic content with no signal for that project), ask for the real project key instead of silently filing it under `PROJ` — the default is a convenience for the common case, not a license to guess the project. Validate via `acli jira project view --key <KEY>` before create. Fall back to `mcp__plugin_atlassian_atlassian__listJiraProjects` (v1: `getVisibleJiraProjects`) (deferred on v2: `executeRead(name="listJiraProjects", cloudId=…, inputs={"action": "create"})` lists projects you can create in, see `ops/SKILL.md` § "When acli can't") only if acli is unavailable/unauthed.
+- **Issue type** — Matches Step 1's pick. acli has no issue-type-metadata command; confirm via `mcp__plugin_atlassian_atlassian__listJiraProjectIssueTypesMetadata` (v1: `getJiraProjectIssueTypesMetadata`) (deferred on v2: reach it via `executeRead`, see `ops/SKILL.md` § "When acli can't") if create rejects. If the project key is still unresolved among multiple plausible candidates, check issue-type support on those candidates proactively (same MCP call) before asking the user to pick — narrowing "which of these projects" down to only the ones that actually support the requested type is a more useful question than a blind pick-one-of-N.
 - **Priority** — **Bug:** money/data-loss/blocked-workflow → `High`; functional w/ workaround → `Medium`; cosmetic → `Low`. **Others:** `Medium` unless user says otherwise.
 - **Labels** — `bug` + 1-2 domain tags (Bug); 1-2 domain tags (others). Do NOT auto-add PO/QA labels.
 - **Environment** *(Bug only)* — Native Jira field. prod/staging/local. Wrap in ADF for MCP fallback.
 - **Affects versions** *(Bug only)* — Only if user gives a valid version; validate or omit.
 - **Parent** *(Sub-task only)* — Required. Sub-tasks can't be created without one.
-- **Assignee** — Don't set one by default (Jira then applies the project's default assignee, which can be the project lead, not unassigned). Only set if user names one. acli's `--assignee` only resolves `@me`/`default`/email; a raw accountId for anyone *other than yourself* silently unassigns instead (see `jira-acli:acli`'s `REFERENCE.md`). When email is privacy-hidden, resolve via `mcp__plugin_atlassian_atlassian__lookupJiraAccountId` (deferred on v2: `executeRead(name="lookupJiraAccountId", cloudId=…, inputs={"query": "<name|email>"})`, see `acli/SKILL.md` § "When acli can't"; v1 took `searchString`), then set `assignee` on v2 (v1: `assignee_account_id`).
+- **Assignee** — Don't set one by default (Jira then applies the project's default assignee, which can be the project lead, not unassigned). Only set if user names one. acli's `--assignee` only resolves `@me`/`default`/email; a raw accountId for anyone *other than yourself* silently unassigns instead (see `atlassian-kit:ops`'s `REFERENCE.md`). When email is privacy-hidden, resolve via `mcp__plugin_atlassian_atlassian__lookupJiraAccountId` (deferred on v2: `executeRead(name="lookupJiraAccountId", cloudId=…, inputs={"query": "<name|email>"})`, see `ops/SKILL.md` § "When acli can't"; v1 took `searchString`), then set `assignee` on v2 (v1: `assignee_account_id`).
 
 ## Step 4 — Preview and confirm
 
 Show resolved metadata + Thai title + rendered content + chosen backend as a review surface. If the type has an AC section, confirm it covers error + boundary + regression paths (see [`../../templates/acceptance-criteria.md`](../../templates/acceptance-criteria.md)). Create/send **only on the user's explicit go-ahead** — this gate is the safeguard against unwanted writes.
 
-`md2adf.sh`/`adf2md.py` (the acli-path preview mechanism in 5a) only carry summary/project/type/labels/parent — priority, environment, and affects-version never appear in that rendered card even when resolved. State those three in prose alongside the rendered card rather than assuming the script surfaces them; if the user needs them set at create time, acli can't do it (see `jira-acli:acli` § "When acli can't") and 5b's MCP path is required instead.
+`md2adf.sh`/`adf2md.py` (the acli-path preview mechanism in 5a) only carry summary/project/type/labels/parent — priority, environment, and affects-version never appear in that rendered card even when resolved. State those three in prose alongside the rendered card rather than assuming the script surfaces them; if the user needs them set at create time, acli can't do it (see `atlassian-kit:ops` § "When acli can't") and 5b's MCP path is required instead.
 
 Before showing the preview, re-read the metadata table you're about to display against the actual flag/payload values you're about to send — rendering only proves a value is syntactically valid, not that it matches what you stated as resolved. Confirmed failure mode: a Bug's metadata table stated Labels as `bug`, `billing`, `csv-export`, but the actual `-l` flag and MCP `additional_fields.labels` carried only `billing,csv-export` — `bug` silently dropped between what was claimed resolved and what was typed into the command, and rendering caught nothing because `billing,csv-export` is a perfectly valid label list on its own. A field the render mechanism does carry (like labels) is not automatically safe just because it isn't on the priority/environment/affects-version blind-spot list above.
 
@@ -85,9 +85,9 @@ Reply: `✅ Created [PROJ-XXX](https://<site>.atlassian.net/browse/PROJ-XXX)`. I
 
 ### 5b — Jira issue MCP fallback
 
-> **Status, 2026-11-19:** no Atlassian MCP tools are available here. For the fields acli cannot set, `acli-rest-write.py issue-set` (priority/parent/environment/fixVersions/affects-versions) and `version-create` exist — same plan-then-apply flow (see `acli/SKILL.md` § "When acli can" + "'" + "t"). `issue-set` is verified live on production (2026-11-24): preview, then apply with the printed `--confirm`.
+> **Status, 2026-11-19:** no Atlassian MCP tools are available here. For the fields acli cannot set, `acli-rest-write.py issue-set` (priority/parent/environment/fixVersions/affects-versions) and `version-create` exist — same plan-then-apply flow (see `ops/SKILL.md` § "When acli can" + "'" + "t"). `issue-set` is verified live on production (2026-11-24): preview, then apply with the printed `--confirm`.
 
-Call `mcp__plugin_atlassian_atlassian__createJiraIssue` (v2 shape per Atlassian's v2 skills, see `acli/SKILL.md` § "When acli can't"; v1 differences in the comments):
+Call `mcp__plugin_atlassian_atlassian__createJiraIssue` (v2 shape per Atlassian's v2 skills, see `ops/SKILL.md` § "When acli can't"; v1 differences in the comments):
 
 ```
 cloudId:       <resolved>
@@ -111,7 +111,7 @@ additional_fields: {
 ```
 
 **Read the ticket back before replying (required for every MCP create).** On v2 a wrong parameter
-name can be dropped with no error (`acli/SKILL.md` § "When acli can't"), so the create succeeds
+name can be dropped with no error (`ops/SKILL.md` § "When acli can't"), so the create succeeds
 on production with fields left empty or at the project default. The v2 names for `environment` and
 `versions` are not confirmed yet. Read it with `getJiraIssue(cloudId, issueIdOrKey="<KEY>")`: a
 Primary tool on v2, so it works in every case that sends a create here, including acli being down
@@ -124,11 +124,11 @@ ask the user to open the ticket page once and confirm headings and lists rendere
   `{"name": "High"}` for `priority`) or return `environment` as rich text in another form.
 - **Empty or different:** present but empty, null, or another value. A dropped `priority` or
   `assignee` comes back as the project default, not null. Name each such field in the reply and
-  stop; don't retry with guessed parameter names (the **Fail loud** rule in `acli/SKILL.md`).
+  stop; don't retry with guessed parameter names (the **Fail loud** rule in `ops/SKILL.md`).
 - **Absent from the response:** not verified; the v2 response shape is not in Atlassian's examples.
   If acli is logged in to the same site you created on (`acli jira auth status`), cross-check with
   `acli jira workitem view <KEY> --fields '*all' --json` (read-only). For `labels`, don't trust a
-  null there: `acli/ISSUES.md` Issue 3 saw `view --json` show null labels that were set (seen
+  null there: `ops/ISSUES.md` Issue 3 saw `view --json` show null labels that were set (seen
   without `--fields`; not re-checked with `*all`). If neither read confirms a field, ask the user
   to open the ticket and check it.
 
@@ -143,7 +143,7 @@ acli jira workitem comment create --key KEY-1 --body-file /tmp/note.json
 
 ## Editing an existing Jira issue's description
 
-Template-conforming edits — fixing a description that doesn't match team format, adding a missing AC, appending a status update — use acli's read-modify-write scripts. **Never** blind-replace with `acli jira workitem edit --description` (wraps plain text into one literal ADF paragraph — see `jira-acli:acli` § Description format).
+Template-conforming edits — fixing a description that doesn't match team format, adding a missing AC, appending a status update — use acli's read-modify-write scripts. **Never** blind-replace with `acli jira workitem edit --description` (wraps plain text into one literal ADF paragraph — see `atlassian-kit:ops` § Description format).
 
 ```bash
 bash "${CLAUDE_SKILL_DIR}/scripts/acli-edit.sh" KEY notes.md
@@ -153,9 +153,9 @@ bash "${CLAUDE_SKILL_DIR}/scripts/acli-set-desc.sh" KEY desc.md   # full replace
 
 Same preview-and-confirm gate as create: render the new body (both scripts support `--dry-run`), show it, edit only on the user's explicit go-ahead. Note `--dry-run` still contacts production — both scripts fetch the live description first, then skip only the final write; there's no fully offline way to preview an edit against a real ticket.
 
-To sanity-check the merge logic itself with zero production contact (e.g. while developing this skill, or validating a tricky `--replace-section` heading match before risking it on a real ticket), call the underlying merge script directly against local files instead of going through `acli-edit.sh`: `python3 "${CLAUDE_SKILL_DIR}/../acli/scripts/acli-edit.py" MODE KEY CUR.json OUT.json [NEW.json] [HEADING]` (`MODE` is `append`/`remove`/`replace`; `CUR.json` is a local bare ADF doc used as the current description, or a saved `view --json` payload for the same `KEY`; it doesn't need to come from a live ticket). This is a testing aid, not part of the normal user-facing edit flow — the two commands above stay the documented way to actually edit a ticket.
+To sanity-check the merge logic itself with zero production contact (e.g. while developing this skill, or validating a tricky `--replace-section` heading match before risking it on a real ticket), call the underlying merge script directly against local files instead of going through `acli-edit.sh`: `python3 "${CLAUDE_SKILL_DIR}/../ops/scripts/acli-edit.py" MODE KEY CUR.json OUT.json [NEW.json] [HEADING]` (`MODE` is `append`/`remove`/`replace`; `CUR.json` is a local bare ADF doc used as the current description, or a saved `view --json` payload for the same `KEY`; it doesn't need to come from a live ticket). This is a testing aid, not part of the normal user-facing edit flow — the two commands above stay the documented way to actually edit a ticket.
 
-Before any full-body replace (`acli-set-desc.sh`, or `--replace-section` on a section that might carry one) on an existing ticket, count structural nodes first — `acli jira workitem view KEY --json | python3 "${CLAUDE_SKILL_DIR}/../acli/scripts/adf-node-diff.py" -`. If `table`/`expand`/`panel`/`extension` count > 0, a Markdown round-trip silently drops them (see `jira-acli:acli` § Description format) — edit around the affected section instead of a full-body replace.
+Before any full-body replace (`acli-set-desc.sh`, or `--replace-section` on a section that might carry one) on an existing ticket, count structural nodes first — `acli jira workitem view KEY --json | python3 "${CLAUDE_SKILL_DIR}/../ops/scripts/adf-node-diff.py" -`. If `table`/`expand`/`panel`/`extension` count > 0, a Markdown round-trip silently drops them (see `atlassian-kit:ops` § Description format) — edit around the affected section instead of a full-body replace.
 
 ## Editing an existing templated comment
 
@@ -196,6 +196,6 @@ acli jira workitem comment update --key KEY --id <commentId> --body-adf /tmp/not
 
 ## Related
 
-- `jira-acli:acli` — search, view, edit, transition, bulk ops, Confluence blog/space/admin, ADF↔markdown. The backend tool this skill invokes.
-- `jira-acli:confluence-content` — Confluence Spec/PRD page content. The Confluence-side counterpart.
+- `atlassian-kit:ops` — search, view, edit, transition, bulk ops, Confluence blog/space/admin, ADF↔markdown. The backend tool this skill invokes.
+- `atlassian-kit:confluence-content` — Confluence Spec/PRD page content. The Confluence-side counterpart.
 - `atlassian:triage-issue` — de-duping/triaging before filing (needs the official Atlassian plugin).
