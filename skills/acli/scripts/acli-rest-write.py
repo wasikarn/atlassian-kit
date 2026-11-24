@@ -363,6 +363,8 @@ def do_apply(opener, run, env_file, flags, pos):
     if not ok:
         return _exit3("the read-back does not match what was sent", str(result)[:200])
     print(f"applied to {target['host']} and verified by read-back")
+    if data["operation"] == "filter-create" and isinstance(result, dict):
+        print(f"filter id: {result.get('id')}")
     path.unlink()
     return 0
 
@@ -668,7 +670,7 @@ def _plan_filter_create(get, args):
     body = {"name": args["name"], "jql": args["jql"]}
     if "description" in args:
         body["description"] = args["description"]
-    base = {"shareProjectId": None}
+    base: dict = {"shareProjectId": None}
     if "share-project" in args:
         pid = str(get(f"/rest/api/3/project/{args['share-project']}", {}).get("id", ""))
         if not pid.isdigit():

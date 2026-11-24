@@ -1583,9 +1583,10 @@ def test_filter_create_posts_the_project_share_and_verifies_by_read_back():
     code, out, err, op = run(argv, _filter_routes(state) + [tenant_route()])
     assert code == 0, err
     assert "created" not in state
-    code, _, err2, _ = run(["apply", str(request_path(out)), "--confirm", confirm_of(out)],
+    code, out2, err2, _ = run(["apply", str(request_path(out)), "--confirm", confirm_of(out)],
                            _filter_routes(state) + [tenant_route()])
     assert code == 0, err2
+    assert "filter id: 321" in out2
     assert state["created"] == {"name": "CML board", "jql": "project = APPR", "description": "d",
                                 "sharePermissions": [{"type": "project", "project": {"id": "17951"}}]}
 
