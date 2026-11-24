@@ -4,7 +4,7 @@ The one place that says which Jira fields a ticket can carry besides its title a
 
 ## How to ask
 
-Ask for these fields in the same message as the gather questions, as one optional group: "มี field เพิ่มไหม (priority, assignee, due date, start date, components, fix versions)". Done when each field has a value from the user or is left unset.
+Ask for these fields in the same message as the gather questions, as one optional group: "มี field เพิ่มไหม (priority, assignee, due date, start date, components, fix versions, team, sprint)". Done when each field has a value from the user or is left unset.
 
 - A field the user did not mention stays unset. Priority is the one exception: it defaults to `Medium` (Bug: from severity, see `SKILL.md` Step 3).
 - A value that must already exist in the project (component, version) is checked against the list below before the preview. If it is missing, stop and ask; never create a new component or version to make the ticket go through.
@@ -22,6 +22,8 @@ Ask for these fields in the same message as the gather questions, as one optiona
 | Start date | all | `additionalAttributes.customfield_10015` | `"2026-12-01"` (YYYY-MM-DD) |
 | Components | all | `additionalAttributes.components` | `[{"name": "4.Payment"}]`; list: `GET /rest/api/3/project/<KEY>/components` |
 | Fix versions | all | `additionalAttributes.fixVersions` | `[{"name": "R2c"}]`; list: `GET /rest/api/3/project/<KEY>/versions` |
+| Team | all | `additionalAttributes.customfield_10001` | the team id as a string, e.g. `"98e4ed27-9428-4bab-8975-41e18f32e17c"` (see Looking up Team and Sprint) |
+| Sprint | all | `additionalAttributes.customfield_10020` | the sprint id as a number, e.g. `22452` (see Looking up Team and Sprint) |
 
 `customfield_10015` is this site's Start date; resolve the id from `createmeta` on another site. Send the `additionalAttributes` group with `md2adf.sh ... -a '<JSON object>'`:
 
@@ -32,7 +34,18 @@ bash "${CLAUDE_SKILL_DIR}/scripts/md2adf.sh" body.md -s "Summary" -p APPR -t Tas
 
 Read the lists with `python3 "${CLAUDE_SKILL_DIR}/../ops/scripts/acli-rest-get.py" api jira /rest/api/3/project/<KEY>/components`.
 
-Verified end to end: priority, due date, start date, one component, one fix version and a label all read back as sent.
+`customfield_10001` and `customfield_10020` are this site's Team and Sprint ids; resolve them from `createmeta` on another site.
+
+Verified end to end: priority, due date, start date, one component, one fix version, a label, a team and a sprint all read back as sent.
+
+## Looking up Team and Sprint
+
+Neither has a name lookup in this plugin. Take the id from a ticket that already uses it, with a read-only search through `acli-rest-get.py api jira`:
+
+- Team: `/rest/api/3/search/jql?jql=project = KEY AND Team is not EMPTY&fields=customfield_10001`; each result holds `{id, name}`.
+- Sprint: `/rest/api/3/search/jql?jql=project = KEY AND sprint is not EMPTY&fields=customfield_10020`; each result holds `{id, name, state, boardId}`.
+
+The api reader accepts only `/rest/api/3/` paths, so the agile board endpoints are out of reach. A team or sprint that no ticket in the project uses yet therefore cannot be found; ask the user for its id. Prefer a `future` sprint over an `active` one when the ticket is only a test, and never put a real ticket into a closed sprint. Show the resolved name next to the id in the preview.
 
 ## Bug only
 
@@ -43,8 +56,6 @@ Environment (`environment`, rich text) and Affects versions (`versions`) sit on 
 | Field | Why |
 |---|---|
 | Story Points, Original estimate, Time tracking | On this project they are on no create or edit screen, so Jira would reject a value. A Jira admin has to add them to the screen first. |
-| Team | The value is a team id; no lookup is wired in yet. |
-| Sprint | The value is a sprint id from the board's sprint list; the lookup is not wired in yet. |
 | Status | Changes by transition (`atlassian-kit:ops`), not at create. |
 | Development | Jira fills it from linked branches and pull requests. |
 

@@ -8,6 +8,9 @@ Pre-`1.0.0`: breaking changes may land in any `0.x` release.
 This file starts at `0.1.18` — releases before that predate the changelog. See
 `git log` for the full history back to `0.1.0`.
 
+## [0.4.4] — 2026-11-24
+**Team and Sprint at create.** `fields.md` moves both from "not supported" to supported (`customfield_10001` team id string, `customfield_10020` sprint id number), with how to find the id from existing project tickets through the read-only search. Verified by read-back on a live APPR ticket.
+
 ## [0.4.3] — 2026-11-24
 **Optional Jira fields at create.** New `jira-content/templates/fields.md` lists the fields a ticket can carry beyond summary and description (priority, assignee, due date, start date, components, fix versions), the value format, and what is not supported yet (Story Points, estimates and time tracking are on no APPR screen; Team and Sprint need an id lookup). `md2adf.py` gains `-a/--attrs` (JSON object into `additionalAttributes`) and `--assignee`. Verified by read-back on a live APPR ticket. The ops and jira-content docs no longer say priority cannot be set at create.
 

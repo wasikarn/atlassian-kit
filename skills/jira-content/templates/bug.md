@@ -22,7 +22,7 @@ Ask all seven at once. Done when items 1 to 6 each have an answer from the user.
 
 If the user's first message already answers items 1 to 6, go straight to Step 2.
 
-Ask the optional fields in [`fields.md`](fields.md) in the same message (priority, assignee, due date, start date, components, fix versions). A field the user leaves out stays unset.
+Ask the optional fields in [`fields.md`](fields.md) in the same message (priority, assignee, due date, start date, components, fix versions, team, sprint). A field the user leaves out stays unset.
 
 ## Step 2: write the description
 
