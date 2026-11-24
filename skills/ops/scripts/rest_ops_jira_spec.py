@@ -212,6 +212,22 @@ def _send(http, args, base, body_text):
     return http(base["method"], url, payload)
 
 
+def _comparable(sent, cur):
+    return isinstance(cur, dict) and any(isinstance(v, SCALARS) and k in cur for k, v in sent.items())
+
+
+def _compare(sent, cur):
+    """False on a mismatch; True when every sent field was compared; "partial" when nested values were skipped;
+    "exists" when nothing could be compared (the resource was found and that is all that is known)."""
+    if not isinstance(sent, dict) or not _comparable(sent, cur):
+        return "exists"
+    for k, v in sent.items():
+        if isinstance(v, SCALARS) and k in cur and cur[k] != v:
+            return False
+    skipped = any(not (isinstance(v, SCALARS) and k in cur) for k, v in sent.items())
+    return "partial" if skipped else True
+
+
 def _readback(get, args, base, body_text, result):
     index = load_index()["ops"]
     op = index[args["op"]]
@@ -230,17 +246,15 @@ def _readback(get, args, base, body_text, result):
     sent = json.loads(body_text) if body_text and body_text != "null" else None
     if sibling is not None and isinstance(sent, dict):
         cur = get(path, {})
-        keys = [k for k, v in sent.items() if isinstance(v, SCALARS) and isinstance(cur, dict) and k in cur]
-        if keys:
-            return all(cur[k] == sent[k] for k in keys)
+        if _comparable(sent, cur):
+            return _compare(sent, cur)
     if isinstance(result, dict) and isinstance(result.get("self"), str):
         full = urllib.parse.urlsplit(result["self"]).path
         at = full.find("/rest/api/3/")  # the gateway prefixes /ex/jira/<cloud id>; the site URL has no prefix
         got = full[at:] if at >= 0 else ""
         if got and ".." not in got:
             cur = get(got, {})
-            keys = [k for k, v in (sent or {}).items() if isinstance(v, SCALARS) and isinstance(cur, dict) and k in cur]
-            return all(cur[k] == sent[k] for k in keys)
+            return _compare(sent, cur)
     raise Fatal("this operation has no read-back the index can derive; check the result in Jira")
 
 

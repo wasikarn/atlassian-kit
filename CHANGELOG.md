@@ -8,6 +8,9 @@ Pre-`1.0.0`: breaking changes may land in any `0.x` release.
 This file starts at `0.1.18` — releases before that predate the changelog. See
 `git log` for the full history back to `0.1.0`.
 
+## [0.3.1] — 2026-11-24
+**Honest read-back for jira-call.** A create or update whose sent fields could not be compared (nested-only body, or fields Jira does not echo) no longer prints "verified by read-back": it says the read-back only confirmed the item exists, or compared the simple fields only. A delete (404) and a full simple-field match still say verified.
+
 ## [0.3.0] — 2026-11-24
 **Whole Jira v3 API through plan/apply.** New `jira-call` write operation driven by a pinned compact index of Atlassian's OpenAPI spec (630 operations: 280 reads, 137 write, 213 destructive tier; `skills/ops/data/jira-v3-index.json`, built by `gen_jira_index.py`). Validation from the index (operation id, path and query parameters, enums, required body fields), gates `--allow-destructive`, `--allow-experimental` and `--allow-deprecated`, a generic read-back (404 for delete, field compare for PUT, `self` link for create) that reports "sent but unverified" rather than guessing. `acli-rest-get.py jira-ops [TEXT ...]` searches the index offline. Hand-written operations stay and are named when a call would duplicate one. Multipart uploads and Jira Software (agile), JSM and Confluence v1 are not covered yet.
 

@@ -167,6 +167,15 @@ for label, res in (("no self", {"id": "1"}), ("foreign self path", {"self": "htt
 check("readback: DELETE on a resource path has a GET sibling to check", spec._sibling_get(idx, idx["deleteComponent"]) is not None)
 check("sibling: a POST collection path has none", spec._sibling_get(idx, idx["createComponent"]) is None)
 
+check("compare: all simple fields equal is True", spec._compare({"a": 1}, {"a": 1, "b": 2}) is True)
+check("compare: a mismatch is False", spec._compare({"a": 1}, {"a": 2}) is False)
+check("compare: nested values skipped is partial", spec._compare({"a": 1, "n": {"x": 1}}, {"a": 1, "n": {"x": 2}}) == "partial")
+check("compare: a field Jira does not echo is partial", spec._compare({"a": 1, "hidden": "s"}, {"a": 1}) == "partial")
+check("compare: nothing comparable is exists-only", spec._compare({"n": {"x": 1}}, {"id": "1"}) == "exists")
+check("compare: no body is exists-only", spec._compare(None, {"id": "1"}) == "exists")
+check("readback: a create with a nested-only body is exists-only", spec._readback(
+    lambda p, q: {"id": "11"}, cargs, cbase, '{"scheme": {"id": 1}}', {"self": "/rest/api/3/component/11"}) == "exists")
+
 if FAILS:
     print(f"{len(FAILS)} check(s) failed")
     sys.exit(1)

@@ -219,7 +219,12 @@ def do_apply(opener, run, env_file, flags, pos):
         return _exit3(f"the read-back failed ({e})")
     if not ok:
         return _exit3("the read-back does not match what was sent", str(result)[:200])
-    print(f"applied to {target['host']} and verified by read-back")
+    if ok == "exists":
+        print(f"applied to {target['host']}; the read-back only confirmed the item exists, its fields were not compared: check them in Jira")
+    elif ok == "partial":
+        print(f"applied to {target['host']}; the read-back compared the simple fields only, nested values were not compared: check them in Jira")
+    else:
+        print(f"applied to {target['host']} and verified by read-back")
     if data["operation"] == "filter-create" and isinstance(result, dict):
         print(f"filter id: {result.get('id')}")
     path.unlink()
