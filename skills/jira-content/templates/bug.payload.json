@@ -206,6 +206,58 @@
         "content": [
           {
             "type": "text",
+            "text": "วิธีเลี่ยงชั่วคราว (Workaround)"
+          }
+        ]
+      },
+      {
+        "type": "paragraph",
+        "content": [
+          {
+            "type": "text",
+            "text": "มีวิธีเลี่ยงไหม ทำอย่างไร หรือ ไม่มี — ลบ section นี้ถ้าไม่ทราบ",
+            "marks": [
+              {
+                "type": "em"
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "type": "heading",
+        "attrs": {
+          "level": 2
+        },
+        "content": [
+          {
+            "type": "text",
+            "text": "Regression"
+          }
+        ]
+      },
+      {
+        "type": "paragraph",
+        "content": [
+          {
+            "type": "text",
+            "text": "เคยทำงานปกติใน version หรือวันที่เท่าไร และอะไรเปลี่ยนหลังจากนั้น — ลบ section นี้ถ้าไม่ทราบ",
+            "marks": [
+              {
+                "type": "em"
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "type": "heading",
+        "attrs": {
+          "level": 2
+        },
+        "content": [
+          {
+            "type": "text",
             "text": "หลักฐาน (ถ้ามี)"
           }
         ]
@@ -252,6 +304,20 @@
           {
             "type": "text",
             "text": "Acceptance Criteria"
+          },
+          {
+            "type": "listItem",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "เครื่อง/Client: browser, OS, อุปกรณ์, app version, URL"
+                  }
+                ]
+              }
+            ]
           }
         ]
       },

@@ -10,7 +10,7 @@ This file holds only the Bug questions and the Thai description.
 
 ## Step 1: gather
 
-Ask all seven at once. Done when items 1 to 6 each have an answer from the user. If the user cannot answer one, write `ไม่ทราบ` in that section; a guess is never an answer. Item 7 may be empty.
+Ask all ten at once. Done when items 1 to 6 each have an answer from the user. If the user cannot answer one, write `ไม่ทราบ` in that section; a guess is never an answer. Items 7 to 10 may be empty; a section with no answer is deleted.
 
 1. **Bug summary**: a short Thai title naming the symptom, e.g. "ยอดคงเหลือไม่ถูกหักหลังลูกค้ายืนยันการสั่งซื้อ"
 2. **What happened**: the wrong result as the user saw it (message text, wrong value, status code)
@@ -18,7 +18,10 @@ Ask all seven at once. Done when items 1 to 6 each have an answer from the user.
 4. **How to reproduce**: exact numbered steps
 5. **Where and how often**: environment (offer production / uat / sit / staging / dev / local, or any value the user types; the user may skip it), screen or channel, every time or sometimes (and the condition)
 6. **Impact**: who is affected and how badly (money, data loss, blocked workflow, cosmetic)
-7. **Evidence**: screenshot, log line, error code, trace ID, affected record ID
+7. **Evidence**: screenshot, log line, error code, trace ID, affected record ID, test account or data used
+8. **Workaround**: is there a way around it, and what is it (or "none")
+9. **Regression**: the last version or date it worked, and what changed since
+10. **Client details**: browser, OS, device, app version, URL
 
 If the user's first message already answers items 1 to 6, go straight to Step 2.
 
@@ -56,6 +59,7 @@ Write in Thai with this structure. Fill each section from the Step 1 answers onl
 
 * **ความถี่:** [เกิดทุกครั้ง / เกิดบางครั้ง พร้อมเงื่อนไข]
 * **ช่องทาง/หน้าจอที่เกี่ยวข้อง:** [เช่น แอป Player, หน้า Admin, เว็บไซต์]
+* **เครื่อง/Client:** [browser, OS, อุปกรณ์, app version, URL ลบบรรทัดนี้ถ้าไม่มี]
 
 > ℹ️ สภาพแวดล้อม (production/uat/sit/staging/dev/local) และเวอร์ชัน/Build จะบันทึกใน **field ของ Jira โดยตรง** (Environment + Affects versions) ไม่ใส่ในคำอธิบายนี้
 
@@ -69,7 +73,19 @@ Write in Thai with this structure. Fill each section from the Step 1 answers onl
 
 ## 📎 หลักฐานประกอบ (Evidence)
 
-[screenshot, log, error code, trace ID ลบทั้ง section ถ้าไม่มี]
+[screenshot, log, error code, trace ID, account หรือ data ที่ใช้ทดสอบ ลบทั้ง section ถ้าไม่มี]
+
+---
+
+## 🩹 วิธีเลี่ยงชั่วคราว (Workaround)
+
+[วิธีเลี่ยงและขั้นตอน หรือ "ไม่มี" ลบทั้ง section ถ้าไม่ทราบ]
+
+---
+
+## ⏪ Regression
+
+[เคยทำงานปกติใน version หรือวันที่เท่าไร และอะไรเปลี่ยนหลังจากนั้น ลบทั้ง section ถ้าไม่ทราบ]
 
 ---
 
