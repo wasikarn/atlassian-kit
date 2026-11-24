@@ -25,6 +25,7 @@ Ask for these fields in the same message as the gather questions, as one optiona
 | Team | all | `additionalAttributes.customfield_10001` | the team id as a string, e.g. `"98e4ed27-9428-4bab-8975-41e18f32e17c"` (see Looking up Team and Sprint) |
 | Sprint | all | `additionalAttributes.customfield_10020` | the sprint id as a number, e.g. `22452` (see Looking up Team and Sprint) |
 | Story Points | Story (verified); Task and others untested | `additionalAttributes.customfield_10028` | a number, e.g. `3` |
+| Original estimate, Time tracking | Task (verified); others untested | `additionalAttributes.timetracking` | `{"originalEstimate": "2h 30m", "remainingEstimate": "2h"}`; Jira duration format (`w`, `d`, `h`, `m`) |
 
 `customfield_10015` is this site's Start date; resolve the id from `createmeta` on another site. Send the `additionalAttributes` group with `md2adf.sh ... -a '<JSON object>'`:
 
@@ -37,7 +38,7 @@ Read the lists with `python3 "${CLAUDE_SKILL_DIR}/../ops/scripts/acli-rest-get.p
 
 `customfield_10001`, `customfield_10020` and `customfield_10028` are this site's Team, Sprint and Story Points ids. The site also has a second field named "Story point estimate" (`customfield_10016`); it stayed empty in the test, so use `customfield_10028`. resolve them from `createmeta` on another site.
 
-Verified end to end: priority, due date, start date, one component, one fix version, a label, a team, a sprint and Story Points (on a Story) all read back as sent.
+Verified end to end: priority, due date, start date, one component, one fix version, a label, a team, a sprint, Story Points (on a Story) and original plus remaining estimate (on a Task) all read back as sent.
 
 ## Looking up Team and Sprint
 
@@ -56,8 +57,7 @@ Environment (`environment`, rich text) and Affects versions (`versions`) sit on 
 
 | Field | Why |
 |---|---|
-| Original estimate, Time tracking | Not tried yet. They are on no create or edit screen of this project, but Story Points was accepted from the same position, so test before ruling them out. |
 | Status | Changes by transition (`atlassian-kit:ops`), not at create. |
 | Development | Jira fills it from linked branches and pull requests. |
 
-When the user asks for one of these, say which row applies and create the ticket without it, after they confirm.
+Convert a spoken estimate ("2 ชม. 30 นาที") to Jira format (`2h 30m`) and show the converted value in the preview. When the user asks for one of these, say which row applies and create the ticket without it, after they confirm.

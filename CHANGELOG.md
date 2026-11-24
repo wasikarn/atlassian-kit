@@ -8,6 +8,9 @@ Pre-`1.0.0`: breaking changes may land in any `0.x` release.
 This file starts at `0.1.18` — releases before that predate the changelog. See
 `git log` for the full history back to `0.1.0`.
 
+## [0.4.6] — 2026-11-24
+**Original estimate and Time tracking at create.** `timetracking.originalEstimate` and `remainingEstimate` go through `additionalAttributes`; verified by read-back on a live APPR Task (2h 30m and 2h read back as 9000 and 7200 seconds). `fields.md` now supports every field on the APPR layout except Status and Development.
+
 ## [0.4.5] — 2026-11-24
 **Story Points at create.** `customfield_10028` accepts a number through `additionalAttributes`; verified by read-back on a live APPR Story. This corrects 0.4.3, which said Story Points could not be set because it is on no create screen. Original estimate and Time tracking are still untested.
 
