@@ -24,6 +24,7 @@ Ask for these fields in the same message as the gather questions, as one optiona
 | Fix versions | all | `additionalAttributes.fixVersions` | `[{"name": "R2c"}]`; list: `GET /rest/api/3/project/<KEY>/versions` |
 | Team | all | `additionalAttributes.customfield_10001` | the team id as a string, e.g. `"98e4ed27-9428-4bab-8975-41e18f32e17c"` (see Looking up Team and Sprint) |
 | Sprint | all | `additionalAttributes.customfield_10020` | the sprint id as a number, e.g. `22452` (see Looking up Team and Sprint) |
+| Story Points | Story (verified); Task and others untested | `additionalAttributes.customfield_10028` | a number, e.g. `3` |
 
 `customfield_10015` is this site's Start date; resolve the id from `createmeta` on another site. Send the `additionalAttributes` group with `md2adf.sh ... -a '<JSON object>'`:
 
@@ -34,9 +35,9 @@ bash "${CLAUDE_SKILL_DIR}/scripts/md2adf.sh" body.md -s "Summary" -p APPR -t Tas
 
 Read the lists with `python3 "${CLAUDE_SKILL_DIR}/../ops/scripts/acli-rest-get.py" api jira /rest/api/3/project/<KEY>/components`.
 
-`customfield_10001` and `customfield_10020` are this site's Team and Sprint ids; resolve them from `createmeta` on another site.
+`customfield_10001`, `customfield_10020` and `customfield_10028` are this site's Team, Sprint and Story Points ids. The site also has a second field named "Story point estimate" (`customfield_10016`); it stayed empty in the test, so use `customfield_10028`. resolve them from `createmeta` on another site.
 
-Verified end to end: priority, due date, start date, one component, one fix version, a label, a team and a sprint all read back as sent.
+Verified end to end: priority, due date, start date, one component, one fix version, a label, a team, a sprint and Story Points (on a Story) all read back as sent.
 
 ## Looking up Team and Sprint
 
@@ -55,7 +56,7 @@ Environment (`environment`, rich text) and Affects versions (`versions`) sit on 
 
 | Field | Why |
 |---|---|
-| Story Points, Original estimate, Time tracking | On this project they are on no create or edit screen, so Jira would reject a value. A Jira admin has to add them to the screen first. |
+| Original estimate, Time tracking | Not tried yet. They are on no create or edit screen of this project, but Story Points was accepted from the same position, so test before ruling them out. |
 | Status | Changes by transition (`atlassian-kit:ops`), not at create. |
 | Development | Jira fills it from linked branches and pull requests. |
 
