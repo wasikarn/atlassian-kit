@@ -8,6 +8,12 @@ Pre-`1.0.0`: breaking changes may land in any `0.x` release.
 This file starts at `0.1.18` — releases before that predate the changelog. See
 `git log` for the full history back to `0.1.0`.
 
+## [0.4.20] — 2026-11-24
+
+- jira-content/SKILL.md split: the MCP fallback (5b) moved to `mcp-fallback.md` and the description and comment edit flows to `editing.md`, each linked from SKILL.md (20.9 KB to 14.7 KB), so the main file loads small and `edit` works on it again. `intake.md` points at `editing.md`.
+- intake.md: the duplicate search uses `acli-ls.sh --jql` (verified on APPR, same hits as the raw REST call, no URL encoding).
+- fields.md: a field is listed as unsupported only after a real write failed or Jira owns it; a missing screen entry is not proof.
+
 ## [0.4.19] — 2026-11-24
 
 - New `skills/jira-content/scripts/test_templates.py` (runs in CI with the other tests): no em dash in ticket and page template text, payload shape, guided/payload section parity for Task, Epic and Sub-task, relative links, and `md2adf.py` flags documented in ops/SKILL.md. It found 12 em dashes left in `confluence-spec.md`, now removed.

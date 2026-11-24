@@ -89,54 +89,7 @@ Reply: `✅ Created [PROJ-XXX](https://<site>.atlassian.net/browse/PROJ-XXX)`. P
 
 ### 5b — Jira issue MCP fallback
 
-> **Status:** no Atlassian MCP tools are available here. For the fields acli cannot set, `acli-rest-write.py issue-set` (priority/parent/environment/fixVersions/affects-versions) and `version-create` exist — same plan-then-apply flow (see `ops/SKILL.md` § "When acli can't"). `issue-set` is verified live on production (2026-11-24): preview, then apply with the printed `--confirm`.
-
-Call `mcp__plugin_atlassian_atlassian__createJiraIssue` (v2 shape per Atlassian's v2 skills, see `ops/SKILL.md` § "When acli can't"; v1 differences in the comments):
-
-```
-cloudId:       <resolved>
-projectKey:    <resolved>
-issueType:     "Bug" | "Story" | "Task" | "Epic" | "Sub-task"   # v1: issueTypeName
-summary:       <Thai title>
-description:   <formatted Thai content, Markdown>   # v1 also took contentFormat: "markdown"; v2 format param not shown, check the live schema
-parent:        <parentKey>   # Sub-task only — top-level param, plain issue key string, NOT nested in additional_fields
-priority:      <derived>     # v2: top-level string. v1: additional_fields "priority": { "name": <derived> }
-additional_fields: {
-  // v2 reserves additional_fields for custom fields; whether labels/environment/versions are
-  // top-level on v2 is not shown — check the live schema. On v1 they go here:
-  "labels": [<domain tags>],
-  // Bug only:
-  "environment": { "version": 1, "type": "doc", "content": [
-    { "type": "paragraph", "content": [{ "type": "text", "text": "prod" }] }
-  ]},
-  "versions": [{ "name": <version> }]   # Affects Version/s, NOT fixVersions — omit if unvalidated
-}
-# assignee: OMIT by default. Include ONLY if user named an assignee (accountId). v1: assignee_account_id.
-```
-
-**Read the ticket back before replying (required for every MCP create).** On v2 a wrong parameter
-name can be dropped with no error (`ops/SKILL.md` § "When acli can't"), so the create succeeds
-on production with fields left empty or at the project default. The v2 names for `environment` and
-`versions` are not confirmed yet. Read it with `getJiraIssue(cloudId, issueIdOrKey="<KEY>")`: a
-Primary tool on v2, so it works in every case that sends a create here, including acli being down
-or logged out. Check each field the user stated or you sent: `priority`, `labels`, `environment`,
-`versions`, `assignee`, `parent`. Skip a field the user agreed to leave out, at the preview or when asked after a rejected create. For `description`, only check that it is present and not empty:
-its stored form can differ from the Markdown you sent, and v2's format parameter is unverified, so
-ask the user to open the ticket page once and confirm headings and lists rendered (not literal
-`##`). A clean create needs every other field **Set** (or confirmed by the cross-check below):
-- **Set:** present with the value you sent, compared by meaning: the response may wrap it (e.g.
-  `{"name": "High"}` for `priority`) or return `environment` as rich text in another form.
-- **Empty or different:** present but empty, null, or another value. A dropped `priority` or
-  `assignee` comes back as the project default, not null. Name each such field in the reply and
-  stop; don't retry with guessed parameter names (the **Fail loud** rule in `ops/SKILL.md`).
-- **Absent from the response:** not verified; the v2 response shape is not in Atlassian's examples.
-  If acli is logged in to the same site you created on (`acli jira auth status`), cross-check with
-  `acli jira workitem view <KEY> --fields '*all' --json` (read-only). For `labels`, don't trust a
-  null there: `ops/ISSUES.md` Issue 3 saw `view --json` show null labels that were set (seen
-  without `--fields`; not re-checked with `*all`). If neither read confirms a field, ask the user
-  to open the ticket and check it.
-
-Reply: `✅ Created [PROJ-XXX](https://<site>.atlassian.net/browse/PROJ-XXX)`, plus any field the read-back found empty, different, or couldn't confirm.
+Use it only for what acli cannot do (see `ops/SKILL.md` § "When acli can't"). Load [`mcp-fallback.md`](mcp-fallback.md) before calling any MCP tool; it holds the tool shapes, the v1 and v2 differences and the field list.
 
 ### 5c — Templated comment (on an existing ticket)
 
@@ -145,34 +98,9 @@ bash "${CLAUDE_SKILL_DIR}/scripts/md2adf.sh" note.md > /tmp/note.json   # bare d
 acli jira workitem comment create --key KEY-1 --body-file /tmp/note.json
 ```
 
-## Editing an existing Jira issue's description
+## Editing an existing ticket or comment
 
-Template-conforming edits — fixing a description that doesn't match team format, adding a missing AC, appending a status update — use acli's read-modify-write scripts. **Never** blind-replace with `acli jira workitem edit --description` (wraps plain text into one literal ADF paragraph — see `atlassian-kit:ops` § Description format).
-
-```bash
-bash "${CLAUDE_SKILL_DIR}/scripts/acli-edit.sh" KEY notes.md
-bash "${CLAUDE_SKILL_DIR}/scripts/acli-edit.sh" KEY --replace-section "🧪 เกณฑ์การยอมรับ" new-ac.md
-bash "${CLAUDE_SKILL_DIR}/scripts/acli-set-desc.sh" KEY desc.md   # full replace only
-```
-
-Same preview-and-confirm gate as create: render the new body (both scripts support `--dry-run`), show it, edit only on the user's explicit go-ahead. Note `--dry-run` still contacts production — both scripts fetch the live description first, then skip only the final write; there's no fully offline way to preview an edit against a real ticket.
-
-To sanity-check the merge logic itself with zero production contact (e.g. while developing this skill, or validating a tricky `--replace-section` heading match before risking it on a real ticket), call the underlying merge script directly against local files instead of going through `acli-edit.sh`: `python3 "${CLAUDE_SKILL_DIR}/../ops/scripts/acli-edit.py" MODE KEY CUR.json OUT.json [NEW.json] [HEADING]` (`MODE` is `append`/`remove`/`replace`; `CUR.json` is a local bare ADF doc used as the current description, or a saved `view --json` payload for the same `KEY`; it doesn't need to come from a live ticket). This is a testing aid, not part of the normal user-facing edit flow — the two commands above stay the documented way to actually edit a ticket.
-
-Before any full-body replace (`acli-set-desc.sh`, or `--replace-section` on a section that might carry one) on an existing ticket, count structural nodes first — `acli jira workitem view KEY --json | python3 "${CLAUDE_SKILL_DIR}/../ops/scripts/adf-node-diff.py" -`. If `table`/`expand`/`panel`/`extension` count > 0, a Markdown round-trip silently drops them (see `atlassian-kit:ops` § Description format) — edit around the affected section instead of a full-body replace.
-
-## Editing an existing templated comment
-
-Fixing/updating a comment that already follows one of the 4 `templates/comments.md` shapes — e.g. "แก้ comment สถานะล่าสุดให้หน่อย". **Never** hand this to acli's raw `comment update --body-adf` without going through the template first.
-
-```bash
-# 1. Read existing comment (find its id first if not given):
-acli jira workitem view KEY --fields comment --json
-# 2. Edit the Markdown per templates/comments.md (keep AC# numbering if it references the ticket's own AC). Preview before sending.
-# 3. Re-convert and update (comment update needs --body-adf, not --body-file):
-bash "${CLAUDE_SKILL_DIR}/scripts/md2adf.sh" note.md > /tmp/note.json
-acli jira workitem comment update --key KEY --id <commentId> --body-adf /tmp/note.json
-```
+Load [`editing.md`](editing.md): description edits (the read-modify-write scripts, never a blind replace) and edits to a templated comment. Both keep the preview-and-confirm gate of Step 4.
 
 ## Input Contract
 

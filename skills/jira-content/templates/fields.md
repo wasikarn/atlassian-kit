@@ -72,6 +72,8 @@ acli jira workitem link create --out KEY-1 --in KEY-2 --type Blocks --yes
 
 ## Not supported yet
 
+A field goes in this table only after a real write on the project failed or was refused, or when Jira owns the field (Status moves by transition, Development comes from linked branches). A field missing from a screen, or from the `createmeta` list, is not proof: Story Points, Original estimate and Time tracking were listed here on that basis and then worked through `additionalAttributes`. Try one create on a throwaway ticket (label `test`), read it back, then decide.
+
 | Field | Why |
 |---|---|
 | Status | Changes by transition (`atlassian-kit:ops`), not at create. |
