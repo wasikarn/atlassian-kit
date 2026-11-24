@@ -713,6 +713,8 @@ def _validate_issue_delete(flags, pos=()):
         _one(flags, f)
     if "key" not in flags or not KEY_RE.match(str(flags["key"])):
         raise Fatal("usage: issue-delete --key <issue key> [--delete-subtasks true]")
+    if "delete-subtasks" in flags and str(flags["delete-subtasks"]).lower() != "true":
+        raise Fatal("--delete-subtasks takes only true; leave it out to refuse deleting sub-tasks")
     args = {"key": str(flags["key"])}
     if str(flags.get("delete-subtasks", "")).lower() == "true":
         args["delete-subtasks"] = True

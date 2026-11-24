@@ -22,8 +22,8 @@ and for `api confluence` the write script's own trio (its token is the granular 
 
 The token goes only into the Authorization header sent to api.atlassian.com. It is never printed.
 api PATHS are refused unless they are pure /rest/api/3/… or /wiki/api/v2/… segments, or the one jira
-board configuration path /rest/agile/1.0/board/<id>/configuration (no dots, so no
-traversal); params may use ?, &, =, %, and ,.
+board configuration path /rest/agile/1.0/board/<id>/configuration (matched exactly). Other
+paths have no dots, so no traversal; params may use ?, &, =, %, and ,.
 
 find-user is a best-effort search with two limits: it returns one page of at most 50 users, and
 Jira searches at most 1,000 users, so an empty result is not proof the user does not exist (a
@@ -51,7 +51,7 @@ FIND_USER_MAX = 50
 USAGE = ("usage: acli-rest-get.py transitions ISSUE-KEY | find-user QUERY | "
          "createmeta PROJECT-KEY [ISSUETYPE-ID] | api <jira|confluence> <PATH>")
 # Agile board configuration (column and status mapping), GET only; the only /rest/agile path allowed.
-AGILE_CONFIG_RE = re.compile(r'^/rest/agile/1[.]0/board/[0-9]+/configuration$')
+AGILE_CONFIG_RE = re.compile(r'^/rest/agile/1[.]0/board/[0-9]+/configuration')
 API_PATH_RE = re.compile(r"^/(rest/api/3/|wiki/api/v2/)[A-Za-z0-9_?&=%,/-]*$")
 
 
@@ -143,7 +143,7 @@ def parse_args(args):
         if rest[0] not in ("jira", "confluence"):
             raise Fatal(f"product must be jira or confluence, not {rest[0]!r}")
         path = rest[1]
-        agile_ok = rest[0] == 'jira' and AGILE_CONFIG_RE.match(path)
+        agile_ok = rest[0] == 'jira' and AGILE_CONFIG_RE.fullmatch(path)
         if not agile_ok and (not API_PATH_RE.match(path) or (rest[0] == "jira" and not path.startswith("/rest/api/3/")) \
                 or (rest[0] == "confluence" and not path.startswith("/wiki/api/v2/"))):
             raise Fatal(f"not an api path: path must start with /rest/api/3/ (jira) or /wiki/api/v2/ "

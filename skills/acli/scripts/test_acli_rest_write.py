@@ -1601,6 +1601,12 @@ def test_filter_create_fails_when_the_share_did_not_stick():
     assert code != 0
 
 
+def test_issue_delete_refuses_a_delete_subtasks_value_other_than_true():
+    for value in ("false", "yes", "1"):
+        code, _, err, op = run(["plan", "issue-delete", "--key", "APPR-1", "--delete-subtasks", value], [tenant_route()])
+        assert code == 1 and op.calls == [], (value, err)
+
+
 if __name__ == "__main__":
     failed = 0
     tests = [(n, f) for n, f in sorted(globals().items()) if n.startswith("test_") and callable(f)]
