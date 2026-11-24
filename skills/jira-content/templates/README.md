@@ -27,25 +27,25 @@ Each of the five types has a guided file and a payload. They serve two situation
 
 Every field that `SKILL.md`'s Input Contract marks required must appear as its own section on both paths, never folded into another section's placeholder where it is easy to drop. Add or remove a required section on one path and mirror it on the other. Recommended and optional sections may differ in depth.
 
-Bug and Story use Thai section headings with emoji (the team's required shape). Task, Epic and Sub-task use the English headings their payloads already carry, with Thai body text.
+Story uses Thai section headings with emoji (the team's required shape). Bug follows the team's real tickets (APPR-8455): English headings for the first five sections, Thai for the kit's additions. Task, Epic and Sub-task use the English headings their payloads already carry, with Thai body text.
 
 ## Sections by type
 
 ### Bug (`bug.payload.json`)
 
-Derived from PROJ-418, 447, 455, 457, 460, 461.
+Derived from PROJ-418, 447, 455, 457, 460, 461 and the real ticket APPR-8455.
 
 | Section | When | Content |
 |---|---|---|
-| Title (`summary`) | always | Symptom first, no `[Area]` bracket; see [title-conventions.md](title-conventions.md) |
-| สรุปปัญหา | always | 1-2 sentences: what broke, where, who it hurts |
-| ขั้นตอน Reproduce | if known | Numbered actions, one per line |
-| ผลที่คาดหวัง | always | What should happen |
-| ผลที่เกิดจริง | always | What happens, including the error or wrong state |
+| Title (`summary`) | always | Symptom first; team tags such as `[RePI][Desktop][F7_E2E]` first when the team uses them; see [title-conventions.md](title-conventions.md) |
+| Environment | always | Device, Version/Build, Env, frequency. Also set the native Environment and Affects versions fields |
+| Test Data | if available | Account, record ID or the data that triggers the bug |
+| Steps to Reproduce | if known | Numbered actions, one per line |
+| Expected Result | always | Numbered; what should happen |
+| Actual Result | always | Numbered, item N pairs with Expected item N; includes the error or wrong state |
 | ความรุนแรง | recommended | High, Medium or Low, with one line of why |
 | ผลกระทบ | always | Who is affected and how badly; its own section, not a clause inside ความรุนแรง |
-| หลักฐาน | if available | Screenshot, log, error code, trace ID; client details (browser, OS, device, app version, URL). Environment and version go in the native Environment and Affects versions fields, not here |
-| Test data | if available | Account, record ID or the data that triggers the bug |
+| หลักฐาน | if available | Screenshot, log, error code, trace ID; client details (OS, URL, other devices) |
 | วิธีเลี่ยงชั่วคราว | if known | The way around the bug, or "none" |
 | Regression | if known | Last version or date it worked, and what changed since |
 | Acceptance Criteria | always | See [acceptance-criteria.md](../../../templates/acceptance-criteria.md) |

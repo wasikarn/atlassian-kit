@@ -8,6 +8,13 @@ Pre-`1.0.0`: breaking changes may land in any `0.x` release.
 This file starts at `0.1.18` — releases before that predate the changelog. See
 `git log` for the full history back to `0.1.0`.
 
+## [0.4.22] — 2026-11-24
+
+### Changed
+
+- Bug template follows a real team ticket (APPR-8455): Environment block (Device, Version, Env, frequency), Test Data, Steps to Reproduce, then numbered Expected Result and Actual Result that pair by number. Impact, Evidence, Workaround, Regression and Acceptance Criteria follow. English headings for the first five, no emoji or separators. Same order in `bug.payload.json`.
+- Bug titles may carry the team's tags (`[RePI][Desktop][F7_E2E]`); `title-conventions.md` now defers to a team that already writes them.
+
 ## [0.4.21] — 2026-11-24
 
 - intake.md § How to ask: closed choices (ticket type, duplicate pick, preview go-ahead, replace or append) use `AskUserQuestion`; ticket content stays free text; a numbered-list fallback covers runs without it. SKILL.md Steps 1 and 1b point to it.

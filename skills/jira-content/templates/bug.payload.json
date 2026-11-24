@@ -17,7 +17,80 @@
         "content": [
           {
             "type": "text",
-            "text": "สรุปปัญหา"
+            "text": "Environment"
+          }
+        ]
+      },
+      {
+        "type": "bulletList",
+        "content": [
+          {
+            "type": "listItem",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "Device: <อุปกรณ์หรือ browser เช่น Desktop (Chrome)>"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "type": "listItem",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "Version: <เวอร์ชัน/Build ของ Web หรือ App>"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "type": "listItem",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "Env: <production / uat / sit / staging / dev / local>"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "type": "listItem",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "ความถี่: <ทุกครั้ง / บางครั้ง พร้อมเงื่อนไข>"
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "type": "heading",
+        "attrs": {
+          "level": 2
+        },
+        "content": [
+          {
+            "type": "text",
+            "text": "Test Data"
           }
         ]
       },
@@ -26,7 +99,7 @@
         "content": [
           {
             "type": "text",
-            "text": "1–2 ประโยค: อะไรพัง / หน้าไหน / กระทบผู้ใช้ยังไง",
+            "text": "account, record ID หรือข้อมูลที่ใช้ทดสอบ ลบ section นี้ถ้าไม่มี",
             "marks": [
               {
                 "type": "em"
@@ -43,7 +116,7 @@
         "content": [
           {
             "type": "text",
-            "text": "ขั้นตอน Reproduce"
+            "text": "Steps to Reproduce"
           }
         ]
       },
@@ -102,19 +175,27 @@
         "content": [
           {
             "type": "text",
-            "text": "ผลที่คาดหวัง"
+            "text": "Expected Result"
           }
         ]
       },
       {
-        "type": "paragraph",
+        "type": "orderedList",
+        "attrs": {
+          "order": 1
+        },
         "content": [
           {
-            "type": "text",
-            "text": "สิ่งที่ระบบควรทำ, สั้น ตรงประเด็น",
-            "marks": [
+            "type": "listItem",
+            "content": [
               {
-                "type": "em"
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "<ผลที่ควรเห็น เจาะจง>"
+                  }
+                ]
               }
             ]
           }
@@ -128,19 +209,27 @@
         "content": [
           {
             "type": "text",
-            "text": "ผลที่เกิดจริง"
+            "text": "Actual Result"
           }
         ]
       },
       {
-        "type": "paragraph",
+        "type": "orderedList",
+        "attrs": {
+          "order": 1
+        },
         "content": [
           {
-            "type": "text",
-            "text": "สิ่งที่เกิดจริง + error / สถานะที่ผิด",
-            "marks": [
+            "type": "listItem",
+            "content": [
               {
-                "type": "em"
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "<ผลที่เห็นจริง + error หรือสถานะที่ผิด ข้อเดียวกับ Expected>"
+                  }
+                ]
               }
             ]
           }
@@ -206,58 +295,6 @@
         "content": [
           {
             "type": "text",
-            "text": "วิธีเลี่ยงชั่วคราว (Workaround)"
-          }
-        ]
-      },
-      {
-        "type": "paragraph",
-        "content": [
-          {
-            "type": "text",
-            "text": "มีวิธีเลี่ยงไหม ทำอย่างไร หรือ ไม่มี, ลบ section นี้ถ้าไม่ทราบ",
-            "marks": [
-              {
-                "type": "em"
-              }
-            ]
-          }
-        ]
-      },
-      {
-        "type": "heading",
-        "attrs": {
-          "level": 2
-        },
-        "content": [
-          {
-            "type": "text",
-            "text": "Regression"
-          }
-        ]
-      },
-      {
-        "type": "paragraph",
-        "content": [
-          {
-            "type": "text",
-            "text": "เคยทำงานปกติใน version หรือวันที่เท่าไร และอะไรเปลี่ยนหลังจากนั้น, ลบ section นี้ถ้าไม่ทราบ",
-            "marks": [
-              {
-                "type": "em"
-              }
-            ]
-          }
-        ]
-      },
-      {
-        "type": "heading",
-        "attrs": {
-          "level": 2
-        },
-        "content": [
-          {
-            "type": "text",
             "text": "หลักฐาน (ถ้ามี)"
           }
         ]
@@ -301,23 +338,61 @@
                 "content": [
                   {
                     "type": "text",
-                    "text": "Test data: account, record ID, ข้อมูลที่ใช้ทดสอบ"
+                    "text": "เครื่อง/Client: OS, URL, อุปกรณ์อื่นๆ"
                   }
                 ]
               }
             ]
-          },
+          }
+        ]
+      },
+      {
+        "type": "heading",
+        "attrs": {
+          "level": 2
+        },
+        "content": [
           {
-            "type": "listItem",
-            "content": [
+            "type": "text",
+            "text": "วิธีเลี่ยงชั่วคราว (Workaround)"
+          }
+        ]
+      },
+      {
+        "type": "paragraph",
+        "content": [
+          {
+            "type": "text",
+            "text": "มีวิธีเลี่ยงไหม ทำอย่างไร หรือ ไม่มี, ลบ section นี้ถ้าไม่ทราบ",
+            "marks": [
               {
-                "type": "paragraph",
-                "content": [
-                  {
-                    "type": "text",
-                    "text": "เครื่อง/Client: browser, OS, อุปกรณ์, app version, URL"
-                  }
-                ]
+                "type": "em"
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "type": "heading",
+        "attrs": {
+          "level": 2
+        },
+        "content": [
+          {
+            "type": "text",
+            "text": "Regression"
+          }
+        ]
+      },
+      {
+        "type": "paragraph",
+        "content": [
+          {
+            "type": "text",
+            "text": "เคยทำงานปกติใน version หรือวันที่เท่าไร และอะไรเปลี่ยนหลังจากนั้น, ลบ section นี้ถ้าไม่ทราบ",
+            "marks": [
+              {
+                "type": "em"
               }
             ]
           }

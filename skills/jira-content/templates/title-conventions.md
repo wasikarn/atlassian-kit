@@ -9,7 +9,7 @@ Grounded in Atlassian's [bug-report template](https://www.atlassian.com/software
 - Thai, one line, no trailing period, same register as the description.
 - A reader scanning the backlog knows what the ticket is about from the title alone.
 - The title states what, not how it was noticed or how it will be fixed. Root cause and fix go in the description (Evidence, Technical Notes); a title that leads with a diagnosis needs a rename when the real cause turns out different.
-- No `[Area]` bracket by default. `labels` already carries the domain tag (`SKILL.md` Step 3), so a bracket duplicates it. Add one only when the team cannot filter or group by label in their list view. Sub-task is the exception: its bracket holds the parent key, which no other field carries.
+- No `[Area]` bracket by default. `labels` already carries the domain tag (`SKILL.md` Step 3), so a bracket duplicates it. Add one only when the team cannot filter or group by label in their list view, or already writes tags in its titles (for example the Bug `[RePI][Desktop][F7_E2E]` in APPR-8455: system, platform, test suite); then follow the team. Sub-task is the exception: its bracket holds the parent key, which no other field carries.
 - One ticket, one title. A title that needs "และ" or "กับ" describes two tickets.
 
 Done when the title passes each line above.

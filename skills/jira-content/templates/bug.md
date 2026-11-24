@@ -12,7 +12,7 @@ This file holds only the Bug questions and the Thai description.
 
 Ask all eleven at once. Done when items 1 to 3, 5 and 6 each have an answer from the user. If the user cannot answer one, write `ไม่ทราบ` in that section; a guess is never an answer. Items 4 and 7 to 11 may be empty; a section with no answer is deleted.
 
-1. **Bug summary**: a short Thai title naming the symptom, e.g. "ยอดคงเหลือไม่ถูกหักหลังลูกค้ายืนยันการสั่งซื้อ"
+1. **Bug summary**: a short Thai title naming the symptom, e.g. "ยอดคงเหลือไม่ถูกหักหลังลูกค้ายืนยันการสั่งซื้อ". Ask whether the team uses title tags such as `[RePI][Desktop][F7_E2E]` (system, platform, test suite); if so, put them first
 2. **What happened**: the wrong result as the user saw it (message text, wrong value, status code)
 3. **What should have happened**: the correct result
 4. **How to reproduce** (optional): exact numbered steps
@@ -31,19 +31,20 @@ If the user's first message already answers items 1 to 6, go straight to Step 2.
 Write in Thai with this structure. Fill each section from the Step 1 answers only. Done when no `[ ]` placeholder is left, every AC has all three bullets, and there are at least 2 ACs (fix verified, regression).
 
 ```
-## 🐞 อาการที่พบ (สิ่งที่เกิดขึ้นจริง)
+## Environment
 
-[2-3 ประโยค: หน้าจอหรือ API ตอบอะไร ค่าที่ผิดคืออะไร]
+* Device: [อุปกรณ์หรือ browser เช่น Desktop (Chrome)]
+* Version: [เวอร์ชัน/Build ของ Web หรือ App]
+* Env: [production / uat / sit / staging / dev / local]
+* ความถี่: [เกิดทุกครั้ง / เกิดบางครั้ง พร้อมเงื่อนไข]
+* ช่องทาง/หน้าจอ: [เช่น แอป Player, หน้า Admin, เว็บไซต์]
+* Client อื่นๆ: [OS, URL ลบบรรทัดนี้ถ้าไม่มี]
 
----
+## Test Data
 
-## ✅ สิ่งที่ควรเป็น (ผลลัพธ์ที่ถูกต้อง)
+[account, record ID หรือข้อมูลที่ใช้ทำให้เกิดบั๊ก ลบทั้ง section ถ้าไม่มี]
 
-[ระบบควรทำอะไรแทน]
-
----
-
-## 🔁 ขั้นตอนการเกิดปัญหา (Steps to Reproduce)
+## Steps to Reproduce
 
 [ลบทั้ง section ถ้าไม่มีขั้นตอน]
 
@@ -51,52 +52,31 @@ Write in Thai with this structure. Fill each section from the Step 1 answers onl
 2. [ขั้นตอน]
 3. [ขั้นตอน]
 
-> 📌 ผลลัพธ์ที่ได้: [ค่าหรือข้อความที่เห็นจริง]
-> 📌 ผลลัพธ์ที่คาดหวัง: [ค่าหรือข้อความที่ควรเห็น]
+## Expected Result
 
----
+1. [ผลที่ควรเห็น เจาะจง]
 
-## 🌐 ความถี่และเงื่อนไข
+## Actual Result
 
-* **ความถี่:** [เกิดทุกครั้ง / เกิดบางครั้ง พร้อมเงื่อนไข]
-* **ช่องทาง/หน้าจอที่เกี่ยวข้อง:** [เช่น แอป Player, หน้า Admin, เว็บไซต์]
-* **เครื่อง/Client:** [browser, OS, อุปกรณ์, app version, URL ลบบรรทัดนี้ถ้าไม่มี]
+1. [ผลที่เห็นจริง ข้อเดียวกับ Expected ข้อ 1]
 
-> ℹ️ สภาพแวดล้อม (production/uat/sit/staging/dev/local) และเวอร์ชัน/Build จะบันทึกใน **field ของ Jira โดยตรง** (Environment + Affects versions) ไม่ใส่ในคำอธิบายนี้
-
----
-
-## 💥 ผลกระทบ (Impact)
+## ผลกระทบ (Impact)
 
 [ใครได้รับผลกระทบ รุนแรงแค่ไหน ใส่จำนวนหรือยอดเงินถ้ามี]
 
----
-
-## 📎 หลักฐานประกอบ (Evidence)
+## หลักฐานประกอบ (Evidence)
 
 [screenshot, log, error code, trace ID ลบทั้ง section ถ้าไม่มี]
 
----
-
-## 🧾 ข้อมูลที่ใช้ทดสอบ (Test data)
-
-[account, record ID หรือข้อมูลที่ใช้ทำให้เกิดบั๊ก ลบทั้ง section ถ้าไม่มี]
-
----
-
-## 🩹 วิธีเลี่ยงชั่วคราว (Workaround)
+## วิธีเลี่ยงชั่วคราว (Workaround)
 
 [วิธีเลี่ยงและขั้นตอน หรือ "ไม่มี" ลบทั้ง section ถ้าไม่ทราบ]
 
----
-
-## ⏪ Regression
+## Regression
 
 [เคยทำงานปกติใน version หรือวันที่เท่าไร และอะไรเปลี่ยนหลังจากนั้น ลบทั้ง section ถ้าไม่ทราบ]
 
----
-
-## 🧪 เกณฑ์การยอมรับการแก้ไข (Acceptance Criteria) สำหรับ QA
+## Acceptance Criteria
 
 **AC1: ยืนยันว่าแก้แล้ว (Fix verified)**
 
@@ -111,9 +91,9 @@ Write in Thai with this structure. Fill each section from the Step 1 answers onl
 * ผลลัพธ์: ทำงานเหมือนเดิม ไม่ได้รับผลกระทบจากการแก้รอบนี้
 ```
 
-The Thai section headings and their emoji are the team's required shape; keep them as written.
+The section order and the English headings Environment, Test Data, Steps to Reproduce, Expected Result and Actual Result follow the team's real Bug tickets (APPR-8455); the sections after them are this kit's additions. Write the same Environment and Version values into the Jira fields too (Environment, Affects versions; [`fields.md`](fields.md)). When there are several wrong results, number them and keep each Actual item paired with the Expected item of the same number.
 
-Weak and strong versions of the first section:
+Weak and strong versions of an Actual Result item:
 
 - Weak: "ระบบทำงานผิดพลาดตอนสั่งซื้อ ทำให้ผู้ใช้ได้รับผลกระทบ"
 - Strong: "หลังลูกค้ากดยืนยันสั่งซื้อ 200 บาท หน้าจอขึ้น 'สำเร็จ' แต่ยอดคงเหลือยังเป็น 500 บาท"
