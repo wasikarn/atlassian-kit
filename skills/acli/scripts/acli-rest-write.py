@@ -644,6 +644,61 @@ OPERATIONS["version-delete"] = {"product": "jira", "validate": _validate_version
                                 "readback": _readback_version_delete}
 
 
+# --- operation: issue-delete (Jira, irreversible) -----------------------------
+# Jira has no trash: a deleted issue is gone. The plan lists what goes with it; an issue with
+# sub-tasks is refused unless --delete-subtasks true is given.
+
+def _validate_issue_delete(flags, pos=()):
+    if pos:
+        raise Fatal(f"issue-delete takes no positional arguments: {pos[0]!r}")
+    _check_flags(flags, {"key", "delete-subtasks"}, "issue-delete")
+    for f in ("key", "delete-subtasks"):
+        _one(flags, f)
+    if "key" not in flags or not KEY_RE.match(str(flags["key"])):
+        raise Fatal("usage: issue-delete --key <issue key> [--delete-subtasks true]")
+    args = {"key": str(flags["key"])}
+    if str(flags.get("delete-subtasks", "")).lower() == "true":
+        args["delete-subtasks"] = True
+    return args
+
+
+def _plan_issue_delete(get, args):
+    f = get(f"/rest/api/3/issue/{args['key']}",
+            {"fields": "summary,issuetype,status,subtasks,issuelinks"}).get("fields") or {}
+    subtasks = [s.get("key") for s in f.get("subtasks") or []]
+    if subtasks and "delete-subtasks" not in args:
+        raise Fatal(f"{args['key']} has sub-tasks ({', '.join(subtasks)}); pass --delete-subtasks true to delete them too")
+    base = {"key": args["key"], "summary": f.get("summary"), "type": (f.get("issuetype") or {}).get("name"),
+            "status": (f.get("status") or {}).get("name"), "subtasks": subtasks,
+            "links": len(f.get("issuelinks") or [])}
+    return base, {}
+
+
+def _notes_issue_delete(args, flags):
+    return ["IRREVERSIBLE: Jira has no trash for issues. To keep it recoverable, transition the issue to a "
+            "cancelled status instead (list names with acli-rest-get.py transitions KEY)."]
+
+
+def _send_issue_delete(http, args, base, body_text):
+    qs = "?deleteSubtasks=true" if args.get("delete-subtasks") else ""
+    return http("DELETE", f"/rest/api/3/issue/{base['key']}{qs}", None)
+
+
+def _readback_issue_delete(get, args, base, body_text, result):
+    try:
+        get(f"/rest/api/3/issue/{base['key']}", {"fields": "summary"})
+    except HttpError as e:
+        if e.code == 404:
+            return True
+        raise
+    return False
+
+
+OPERATIONS["issue-delete"] = {"product": "jira", "validate": _validate_issue_delete,
+                              "plan": _plan_issue_delete, "send": _send_issue_delete,
+                              "readback": _readback_issue_delete, "notes": _notes_issue_delete}
+
+
 
 # --- operations: page-fetch and page-update (Confluence v2, phase 4) --------
 

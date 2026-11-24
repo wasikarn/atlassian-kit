@@ -383,7 +383,7 @@ def test_tokens_never_reach_stdout_or_stderr_on_error_paths():
 
 
 def test_registered_operations_match_the_plan_phases_so_far():
-    assert sorted(rw.OPERATIONS) == ["attachment-upload", "issue-set", "page-create", "page-delete", "page-fetch", "page-update",
+    assert sorted(rw.OPERATIONS) == ["attachment-upload", "issue-delete", "issue-set", "page-create", "page-delete", "page-fetch", "page-update",
                                      "version-create", "version-delete", "version-edit"], sorted(rw.OPERATIONS)
     for name, op in rw.OPERATIONS.items():
         expected = {"product", "validate", "plan", "send", "readback"} if name != "page-fetch" else {"planOnly", "product", "validate", "plan"}
@@ -1434,6 +1434,7 @@ def _stored_args_for_every_operation():
     seeds = {
         "page-create": ({"space": "APPR", "title": "seed", "body-adf": "seed.adf"}, ()),
         "issue-set": ({"key": "APPR-1", "priority": "High"}, ()),
+        "issue-delete": ({"key": "APPR-1"}, ()),
         "version-create": ({"project": "APPR", "name": "seed"}, ()),
         "version-edit": ({"id": "18329", "released": "true", "archived": "false",
                           "release-date": "2030-01-01"}, ()),
@@ -1471,6 +1472,73 @@ def test_applys_re_validation_refuses_a_key_no_validator_knows():
         except rw.Fatal:
             continue
         raise AssertionError(f"{op_name} re-validated a key no validator knows")
+
+
+# --- issue-delete: irreversible, so plan names what goes and apply verifies by a 404 -----
+
+def _issue_routes(state):
+    def route(req):
+        u, m = urllib.parse.urlsplit(req.full_url).path, req.get_method()
+        if u.endswith("/rest/api/3/issue/DEMO-9"):
+            if m == "DELETE":
+                state["deleted"] = req.full_url
+                return ""
+            if state.get("deleted"):
+                return urllib.error.HTTPError(req.full_url, 404, "nf", http.client.HTTPMessage(),
+                                              io.BytesIO(b'{"errorMessages":["Issue does not exist"]}'))
+            return json.dumps({"fields": state["fields"]})
+        raise AssertionError(f"unexpected {m} {u}")
+    return [(JIRA, route)]
+
+
+def _issue_fields(subtasks=()):
+    return {"summary": "Old", "issuetype": {"name": "Task"}, "status": {"name": "To Do"},
+            "subtasks": [{"key": k} for k in subtasks], "issuelinks": [{}, {}]}
+
+
+def test_issue_delete_refuses_bad_arguments_before_any_request():
+    for argv in (["--key", "nope"], [], ["--key", "DEMO-9", "--jql", "x"]):
+        code, _, err, op = run(["plan", "issue-delete", *argv], [tenant_route()])
+        assert code == 1 and op.calls == [], argv
+
+
+def test_issue_delete_plan_lists_what_goes_warns_and_sends_no_write():
+    state = {"fields": _issue_fields()}
+    code, out, err, op = run(["plan", "issue-delete", "--key", "DEMO-9"], _issue_routes(state) + [tenant_route()])
+    assert code == 0, err
+    assert "IRREVERSIBLE" in out and "Old" in out and '"links": 2' in out
+    assert not state.get("deleted") and all(c.get_method() == "GET" for c in op.calls if "/issue/" in c.full_url)
+
+
+def test_issue_delete_refuses_sub_tasks_unless_asked_and_then_passes_deleteSubtasks():
+    state = {"fields": _issue_fields(["DEMO-10"])}
+    code, _, err, _ = run(["plan", "issue-delete", "--key", "DEMO-9"], _issue_routes(state) + [tenant_route()])
+    assert code == 1 and "DEMO-10" in err and "--delete-subtasks" in err
+    code, out, err, _ = run(["plan", "issue-delete", "--key", "DEMO-9", "--delete-subtasks", "true"],
+                            _issue_routes(state) + [tenant_route()])
+    assert code == 0, err
+    code, _, err2, _ = run(["apply", str(request_path(out)), "--confirm", confirm_of(out)],
+                           _issue_routes(state) + [tenant_route()])
+    assert code == 0, err2
+    assert state["deleted"].endswith("?deleteSubtasks=true")
+
+
+def test_issue_delete_apply_refuses_a_wrong_confirm_and_deletes_nothing():
+    state = {"fields": _issue_fields()}
+    code, out, err, _ = run(["plan", "issue-delete", "--key", "DEMO-9"], _issue_routes(state) + [tenant_route()])
+    code, _, err2, _ = run(["apply", str(request_path(out)), "--confirm", "000000000000"],
+                           _issue_routes(state) + [tenant_route()])
+    assert code != 0 and not state.get("deleted")
+
+
+def test_issue_delete_applies_and_verifies_by_a_404_readback():
+    state = {"fields": _issue_fields()}
+    code, out, err, _ = run(["plan", "issue-delete", "--key", "DEMO-9"], _issue_routes(state) + [tenant_route()])
+    assert code == 0, err
+    path = request_path(out)
+    code, _, err2, _ = run(["apply", str(path), "--confirm", confirm_of(out)], _issue_routes(state) + [tenant_route()])
+    assert code == 0, err2
+    assert state["deleted"].endswith("/rest/api/3/issue/DEMO-9") and not path.exists()
 
 
 if __name__ == "__main__":
