@@ -10,7 +10,7 @@ This hook makes the plugin's preview-then-stop rule real:
   list*|get*`, optionally piped); a context-mode execute/batch call that mentions acli anywhere
   is denied (ctx_search, ctx_index and other non-shell context-mode tools are not checked).
 - In the main thread: such a call prompts (`ask`) when what runs shows a write signal, so an
-  unattended run (`claude -p`, where nobody can answer) cannot write. Not a boundary, a safety net.
+  unattended run (a headless run, where nobody can answer) cannot write. Not a boundary, a safety net.
 - Atlassian MCP tools (a product word in the server or tool name, or an execute* tier called with
   a `name`): reads pass (get*, search*, list*, lookup*, ...; executeRead/execute with a read
   tool's name); anything else is denied in a subagent and asks in the main thread.
