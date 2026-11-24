@@ -1832,6 +1832,26 @@ def test_jira_call_says_so_when_the_read_back_only_proved_existence():
     code, out2, err2, _ = run(["apply", str(request_path(out)), "--confirm", confirm_of(out)], _component_routes(state) + [tenant_route()])
     assert code == 0, err2
     assert "compared the simple fields only" in out2 and "verified by read-back" not in out2
+    assert "check them in Jira" in out2
+
+
+def test_confluence_call_names_confluence_not_jira_when_the_read_back_is_partial():
+    state = {}
+
+    def route(req):
+        u, m = urllib.parse.urlsplit(req.full_url).path, req.get_method()
+        if m == "POST" and u.endswith("/wiki/api/v2/folders"):
+            state["f"] = dict(json.loads(req.data.decode()), id="77")
+            return json.dumps(state["f"])
+        if m == "GET" and u.endswith("/wiki/api/v2/folders/77"):
+            return json.dumps(state["f"])
+        raise AssertionError(f"unexpected {m} {u}")
+    body = '{"spaceId": "1", "title": "t", "extra": {"nested": true}}'
+    code, out, err, _ = run(["plan", "confluence-call", "--op", "createFolder", "--body", body], [(CONF, route), tenant_route()])
+    assert code == 0, err
+    code, out2, err2, _ = run(["apply", str(request_path(out)), "--confirm", confirm_of(out)], [(CONF, route), tenant_route()])
+    assert code == 0, err2
+    assert "check them in Confluence" in out2 and "Jira" not in out2
 
 
 def test_jira_call_delete_needs_the_gate_flag_then_deletes_and_verifies_by_404():

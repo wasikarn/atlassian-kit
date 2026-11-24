@@ -8,6 +8,9 @@ Pre-`1.0.0`: breaking changes may land in any `0.x` release.
 This file starts at `0.1.18` — releases before that predate the changelog. See
 `git log` for the full history back to `0.1.0`.
 
+## [0.4.1] — 2026-11-24
+**Read-back wording names the product.** The "only confirmed the item exists" and "compared the simple fields only" lines said "check them in Jira" for every spec operation; they now say Jira or Confluence. Found by the first live `confluence-call` write (a content property on a throwaway ARAC page, created and deleted through plan/apply).
+
 ## [0.4.0] — 2026-11-24
 **Whole Confluence API through plan/apply.** The engine is now `rest_ops_spec.py` (renamed from `rest_ops_jira_spec.py`; Jira behaviour unchanged) and registers three operations: `jira-call`, `confluence-call` (v2, 252 operations: 148 read, 41 write, 63 destructive) and `confluence-v1-call` (v1, 127 operations: 64 read, 26 write, 37 destructive; the only home of restrictions, watches, labels, groups, space permissions, templates). `gen_spec_index.py jira|confluence-v2|confluence-v1` replaces `gen_jira_index.py`. v1 has its own base (`/wiki/rest/api`) and its own classic-scope token key `ACLI_REST_WRITE_CONFLUENCE_V1_TOKEN`, used for reads and sends, so `resolve_target` gained `read_api` and `read_token_key`. A create that returns only an `id` is read back through the collection's item GET. `acli-rest-get.py confluence-ops` searches both indexes offline; `api confluence /wiki/rest/api/...` reads v1 with the v1 token. Fix found by the new tests: env-file keys with digits (`..._V1_TOKEN`) were silently ignored. Test coverage of the engine and the generator is 100% line and branch, gated by a documented command in `CLAUDE.md`.
 
