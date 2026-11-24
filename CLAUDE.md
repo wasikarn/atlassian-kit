@@ -13,6 +13,8 @@ python3 -m py_compile skills/*/scripts/*.py
 for f in skills/*/scripts/*.sh; do bash -n "$f"; done
 for t in skills/*/scripts/test_*.py hooks/test_*.py; do python3 "$t" || echo "FAILED: $t"; done
 python3 skills/ops/scripts/md2adf.py somefile.md | python3 skills/ops/scripts/adf2md.py -   # round-trip
+# coverage gate (100% line + branch on the spec engine and its generator; the installed `coverage` CLI runs stdlib scripts):
+( cd skills/ops/scripts && rm -f /tmp/ak.cov && for t in test_rest_ops_spec.py test_gen_spec_index.py test_acli_rest_write.py test_acli_rest_get.py; do coverage run --branch --data-file=/tmp/ak.cov --append "$t" >/dev/null; done; coverage report --data-file=/tmp/ak.cov --include='*/rest_ops_spec.py,*/gen_spec_index.py' --fail-under=100 --show-missing )
 ```
 
 ## Layout
@@ -27,7 +29,7 @@ python3 skills/ops/scripts/md2adf.py somefile.md | python3 skills/ops/scripts/ad
   that enforces that rule for every subagent while the plugin is enabled, for acli commands and
   Atlassian MCP tools: deny unless provably a read; main-thread writes prompt. Its corpora are
   the attack-proposal sets from 0.1.42 (`corpus.tsv`, `multi/`, `tools.json`), 0.1.45
-  (`mcp.json`), 0.1.68 and 0.3.0 (the direct-REST scripts, 6 rows: rest-get, rest-write plan/apply, jira-ops, jira-call); a new bypass or over-block becomes a row there first. A live copy runs
+  (`mcp.json`), 0.1.68 and 0.3.0 (the direct-REST scripts, 9 rows: rest-get, rest-write plan/apply, jira-ops, jira-call, confluence-ops, confluence-call, confluence-v1-call); a new bypass or over-block becomes a row there first. A live copy runs
   user-level from the operator's dotfiles; change both (script and matcher). Where either is
   installed, the test suite fails until `~/.claude/hooks/acli-guard.py` and the
   `~/.claude/settings.json` acli-guard entry both exist and match.
@@ -43,8 +45,8 @@ python3 skills/ops/scripts/md2adf.py somefile.md | python3 skills/ops/scripts/ad
   mode-600 `~/.claude/atlassian.env`), `acli-rest-write.py` (plan/apply entry: flags, target check, request file, confirm hash, apply with read-back; the
   operations live beside it: `rest_ops_confluence.py` (page-create/fetch/update/delete, attachment-upload),
   `rest_ops_jira_issues.py` (issue-set, issue-delete, version-create/edit/delete), `rest_ops_jira_boards.py`
-  (filter-create, board-columns-set, board-delete, board-property-set), `rest_ops_jira_spec.py` (`jira-call`: any
-  Jira v3 write from the pinned index `skills/ops/data/jira-v3-index.json`, built by `gen_jira_index.py`), over the shared registry in
+  (filter-create, board-columns-set, board-delete, board-property-set), `rest_ops_spec.py` (`jira-call`, `confluence-call`,
+  `confluence-v1-call`: any write from the pinned indexes in `skills/ops/data/`, built by `gen_spec_index.py`), over the shared registry in
   `rest_write_base.py`; a new operation is a new entry in one of them; write tokens from the same file).
   Wrappers: `acli-new.sh` (create from Markdown), `acli-set-desc.sh` (replace the whole
   description), `acli-edit.sh` (runs `acli-edit.py`), `acli-assign.sh` (assign by accountId via

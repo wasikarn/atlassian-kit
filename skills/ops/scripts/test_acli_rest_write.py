@@ -384,7 +384,7 @@ def test_tokens_never_reach_stdout_or_stderr_on_error_paths():
 
 
 def test_registered_operations_match_the_plan_phases_so_far():
-    assert sorted(rw.OPERATIONS) == ["attachment-upload", "board-columns-set", "board-delete", "board-property-set", "filter-create", "issue-delete", "issue-set", "jira-call", "page-create", "page-delete", "page-fetch", "page-update",
+    assert sorted(rw.OPERATIONS) == ["attachment-upload", "board-columns-set", "board-delete", "board-property-set", "confluence-call", "confluence-v1-call", "filter-create", "issue-delete", "issue-set", "jira-call", "page-create", "page-delete", "page-fetch", "page-update",
                                      "version-create", "version-delete", "version-edit"], sorted(rw.OPERATIONS)
     for name, op in rw.OPERATIONS.items():
         expected = {"product", "validate", "plan", "send", "readback"} if name != "page-fetch" else {"planOnly", "product", "validate", "plan"}
@@ -1439,6 +1439,8 @@ def _stored_args_for_every_operation():
         "filter-create": ({"name": "seed", "jql": "project = APPR"}, ()),
         "board-columns-set": ({"board": "1", "columns": "[{\"name\": \"a\", \"statuses\": []}]"}, ()),
         "board-delete": ({"board": "1"}, ()),
+        "confluence-call": ({"op": "createFolder", "body": "{\"spaceId\": \"1\"}"}, ()),
+        "confluence-v1-call": ({"op": "createSpace", "body": "{\"key\": \"X\", \"name\": \"n\"}"}, ()),
         "jira-call": ({"op": "createComponent", "body": "{\"name\": \"seed\"}"}, ()),
         "board-property-set": ({"board": "1", "key": "k", "value": "1"}, ()),
         "version-create": ({"project": "APPR", "name": "seed"}, ()),
@@ -1857,6 +1859,84 @@ def test_jira_call_apply_refuses_when_the_target_changed_after_the_plan():
                            _component_routes(state) + [tenant_route()])
     assert code != 0 and "live state changed" in err2
     assert "deleted" not in state
+
+
+# --- confluence-call / confluence-v1-call (0.4.0): Confluence v2 and v1 through the same gate -----
+
+import base64  # noqa: E402
+
+CONFV1 = f"https://api.atlassian.com/ex/confluence/{CID}/wiki/rest/api"
+V1TOKEN = "V1-SECRET-QQ"
+ENV_V1 = ENV_OK + f"ACLI_REST_WRITE_CONFLUENCE_V1_TOKEN={V1TOKEN}\n"
+
+
+def _basic_token(req):
+    return base64.b64decode(req.get_header("Authorization").split(" ", 1)[1]).decode().split(":", 1)[1]
+
+
+def test_confluence_call_v2_create_goes_to_the_v2_base_with_the_v2_token_and_verifies_by_id():
+    state = {}
+
+    def route(req):
+        u, m = urllib.parse.urlsplit(req.full_url).path, req.get_method()
+        if m == "POST" and u.endswith("/wiki/api/v2/folders"):
+            state["f"] = dict(json.loads(req.data.decode()), id="77")
+            return json.dumps(state["f"])
+        if m == "GET" and u.endswith("/wiki/api/v2/folders/77"):
+            return json.dumps(state["f"])
+        raise AssertionError(f"unexpected {m} {u}")
+    body = '{"spaceId": "1", "title": "t"}'
+    code, out, err, _ = run(["plan", "confluence-call", "--op", "createFolder", "--body", body], [(CONF, route), tenant_route()])
+    assert code == 0, err
+    assert "f" not in state, "plan must not write"
+    code, out2, err2, op = run(["apply", str(request_path(out)), "--confirm", confirm_of(out)], [(CONF, route), tenant_route()])
+    assert code == 0 and "verified by read-back" in out2, err2
+    assert state["f"]["title"] == "t"
+    assert {_basic_token(r) for r in op.calls if "/wiki/" in r.full_url} == {"CONF-SECRET-QQ"}
+
+
+def test_confluence_v1_call_uses_the_v1_base_and_the_v1_token_for_reads_and_sends():
+    state = {}
+
+    def route(req):
+        u, m = urllib.parse.urlsplit(req.full_url).path, req.get_method()
+        if m == "POST" and u.endswith("/wiki/rest/api/space"):
+            state["s"] = dict(json.loads(req.data.decode()), _links={"self": f"https://{HOST}/wiki/rest/api/space/X"})
+            return json.dumps(state["s"])
+        if m == "GET" and u.endswith("/wiki/rest/api/space/X"):
+            return json.dumps(state["s"])
+        raise AssertionError(f"unexpected {m} {u}")
+    body = '{"key": "X", "name": "n"}'
+    code, out, err, _ = run(["plan", "confluence-v1-call", "--op", "createSpace", "--body", body], [(CONFV1, route), tenant_route()], env=ENV_V1)
+    assert code == 0, err
+    code, out2, err2, op = run(["apply", str(request_path(out)), "--confirm", confirm_of(out)], [(CONFV1, route), tenant_route()], env=ENV_V1)
+    assert code == 0 and "verified by read-back" in out2, err2
+    wiki = [r for r in op.calls if "/wiki/" in r.full_url]
+    assert wiki and {_basic_token(r) for r in wiki} == {V1TOKEN}, "every v1 call must carry the v1 token only"
+    assert all("/wiki/rest/api/" in r.full_url for r in wiki)
+
+
+def test_confluence_v1_call_without_its_token_refuses_before_any_confluence_request():
+    code, _, err, op = run(["plan", "confluence-v1-call", "--op", "createSpace", "--body", '{"key": "X", "name": "n"}'],
+                           [tenant_route()])
+    assert code == 1 and "ACLI_REST_WRITE_CONFLUENCE_V1_TOKEN" in err
+    assert all("/wiki/" not in r.full_url for r in op.calls)
+
+
+def test_confluence_v1_call_that_cannot_be_read_back_ends_sent_but_unverified():
+    state = {}
+
+    def route(req):
+        u, m = urllib.parse.urlsplit(req.full_url).path, req.get_method()
+        if m == "POST" and u.endswith("/wiki/rest/api/content/5/label"):
+            state["sent"] = True
+            return json.dumps([{"name": "x"}])
+        raise AssertionError(f"unexpected {m} {u}")
+    code, out, err, _ = run(["plan", "confluence-v1-call", "--op", "addLabelsToContent", "--path", "id=5", "--body", '[{"prefix": "global", "name": "x"}]'],
+                            [(CONFV1, route), tenant_route()], env=ENV_V1)
+    assert code == 0, err
+    code, out2, err2, _ = run(["apply", str(request_path(out)), "--confirm", confirm_of(out)], [(CONFV1, route), tenant_route()], env=ENV_V1)
+    assert state["sent"] and code == 3 and "UNVERIFIED" in err2.upper(), (code, err2)
 
 
 if __name__ == "__main__":

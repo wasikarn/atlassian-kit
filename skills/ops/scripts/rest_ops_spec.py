@@ -1,27 +1,50 @@
-"""jira-call: any Jira Cloud v3 write, driven by the pinned OpenAPI index (skills/ops/data/jira-v3-index.json).
+"""Spec-driven write operations of acli-rest-write: jira-call, confluence-call (v2) and confluence-v1-call.
 
-plan jira-call --op <operationId> [--path name=value ...] [--query name=value ...] [--body '<JSON>' | --body-file FILE]
-               [--allow-destructive yes] [--allow-experimental yes] [--allow-deprecated yes]
+plan <name> --op <operationId> [--path name=value ...] [--query name=value ...] [--body '<JSON>' | --body-file FILE]
+            [--allow-destructive yes] [--allow-experimental yes] [--allow-deprecated yes]
 
-The index decides what is valid: unknown operation ids, GET operations (reads go through acli-rest-get.py), multipart
-operations, missing or unknown parameters and missing required body fields are refused. Tiers: write runs on plan +
-confirm; destructive (every DELETE and the admin tags in gen_jira_index.py) also needs --allow-destructive yes.
-Operations that already have a hand-written entry are refused and point to it."""
+Each operation name is bound to one pinned index under skills/ops/data (built by gen_spec_index.py from Atlassian's
+OpenAPI spec). The index decides what is valid: unknown operation ids, GET operations (reads go through
+acli-rest-get.py), multipart operations, missing or unknown parameters and missing required body fields are refused.
+Tiers: write runs on plan + confirm; destructive (every DELETE and the admin tags in gen_spec_index.py) also needs
+--allow-destructive yes. Operations that already have a hand-written entry are refused and point to it."""
 
+import functools
 import json
 import pathlib
 import re
 import urllib.parse
+from types import SimpleNamespace
 
 from acli_rest_common import Fatal, HttpError
 from rest_write_base import OPERATIONS, _check_flags, _one
 
-INDEX_PATH = pathlib.Path(__file__).resolve().parent.parent / "data" / "jira-v3-index.json"
-_INDEX = None
+DATA_DIR = pathlib.Path(__file__).resolve().parent.parent / "data"
 
-# operationId -> the hand-written operation with richer previews and read-back
-HANDWRITTEN = {"editIssue": "issue-set", "deleteIssue": "issue-delete", "createVersion": "version-create",
-               "updateVersion": "version-edit", "deleteVersion": "version-delete", "createFilter": "filter-create"}
+JIRA = SimpleNamespace(
+    name="jira-call", product="jira", index="jira-v3-index.json",
+    # operationId -> the hand-written operation with richer previews and read-back
+    handwritten={"editIssue": "issue-set", "deleteIssue": "issue-delete", "createVersion": "version-create",
+                 "updateVersion": "version-edit", "deleteVersion": "version-delete", "createFilter": "filter-create"},
+    find="acli-rest-get.py jira-ops <text>", read="acli-rest-get.py api jira {path}",
+    self_marker="/rest/api/3/", self_keep=True, extra={})
+CONFLUENCE_V2 = SimpleNamespace(
+    name="confluence-call", product="confluence", index="confluence-v2-index.json",
+    handwritten={"createPage": "page-create", "updatePage": "page-update", "deletePage": "page-delete"},
+    find="acli-rest-get.py confluence-ops <text>", read="acli-rest-get.py api confluence /wiki/api/v2{path}",
+    self_marker="/wiki/api/v2", self_keep=False, extra={})
+CONFLUENCE_V1 = SimpleNamespace(
+    name="confluence-v1-call", product="confluence", index="confluence-v1-index.json",
+    handwritten={"createAttachment": "attachment-upload"},
+    find="acli-rest-get.py confluence-ops <text>", read="acli-rest-get.py api confluence /wiki/rest/api{path}",
+    self_marker="/wiki/rest/api", self_keep=False,
+    # these reach resolve_target in acli-rest-write.py: the v1 base for reads and sends, one classic-scope token
+    extra={"send_api": "/wiki/rest/api", "read_api": "/wiki/rest/api",
+           "send_token_key": "ACLI_REST_WRITE_CONFLUENCE_V1_TOKEN",
+           "read_token_key": "ACLI_REST_WRITE_CONFLUENCE_V1_TOKEN"})
+CONFIGS = (JIRA, CONFLUENCE_V2, CONFLUENCE_V1)
+HANDWRITTEN = JIRA.handwritten  # kept for the tests
+
 GATES = (("allow-destructive", "destructive tier", lambda op: op["tier"] == "destructive"),
          ("allow-experimental", "experimental", lambda op: op.get("experimental")),
          ("allow-deprecated", "deprecated", lambda op: op.get("deprecated")))
@@ -30,18 +53,16 @@ VALUE_RE = re.compile(r"^[^\x00-\x1f]{1,500}$")
 PATH_VALUE_RE = re.compile(r"^[A-Za-z0-9_.:@-]{1,128}$")
 MAX_BODY = 200_000
 SCALARS = (str, int, float, bool, type(None))
+_INDEXES = {}
 
 
-def load_index(path=None):
-    global _INDEX
-    if path is not None:
-        return json.loads(pathlib.Path(path).read_text())
-    if _INDEX is None:
+def load_index(cfg=JIRA):
+    if cfg.index not in _INDEXES:
         try:
-            _INDEX = json.loads(INDEX_PATH.read_text())
+            _INDEXES[cfg.index] = json.loads((DATA_DIR / cfg.index).read_text())
         except (OSError, ValueError) as e:
-            raise Fatal(f"cannot read the Jira operation index {INDEX_PATH}: {type(e).__name__}") from None
-    return _INDEX
+            raise Fatal(f"cannot read the operation index {cfg.index}: {type(e).__name__}") from None
+    return _INDEXES[cfg.index]
 
 
 def _list(flags, name):
@@ -66,25 +87,25 @@ def _kv(items):
     return dict(i.split("=", 1) for i in items)
 
 
-def _validate(flags, pos=()):
+def _validate(flags, pos=(), cfg=JIRA):
     if pos:
-        raise Fatal(f"jira-call takes no positional arguments: {pos[0]!r}")
+        raise Fatal(f"{cfg.name} takes no positional arguments: {pos[0]!r}")
     _check_flags(flags, {"op", "path", "query", "body", "body-file", "allow-destructive", "allow-experimental",
-                         "allow-deprecated"}, "jira-call")
+                         "allow-deprecated"}, cfg.name)
     op_id = _one(flags, "op")
     if not op_id:
-        raise Fatal("usage: jira-call --op <operationId> [--path n=v] [--query n=v] [--body JSON | --body-file F] "
-                    "(find ids with: acli-rest-get.py jira-ops <text>)")
-    index = load_index()["ops"]
+        raise Fatal(f"usage: {cfg.name} --op <operationId> [--path n=v] [--query n=v] [--body JSON | --body-file F] "
+                    f"(find ids with: {cfg.find})")
+    index = load_index(cfg)["ops"]
     if op_id not in index:
-        raise Fatal(f"unknown Jira operation {op_id!r} (find ids with: acli-rest-get.py jira-ops <text>)")
+        raise Fatal(f"unknown operation {op_id!r} for {cfg.name} (find ids with: {cfg.find})")
     op = index[op_id]
-    if op_id in HANDWRITTEN:
-        raise Fatal(f"{op_id} has a hand-written operation with a fuller preview: use {HANDWRITTEN[op_id]}")
+    if op_id in cfg.handwritten:
+        raise Fatal(f"{op_id} has a hand-written operation with a fuller preview: use {cfg.handwritten[op_id]}")
     if op["method"] == "GET":
-        raise Fatal(f"{op_id} is a read: use acli-rest-get.py api jira {op['path']}")
+        raise Fatal(f"{op_id} is a read: use {cfg.read.format(path=op['path'])}")
     if op.get("body", {}).get("multipart"):
-        raise Fatal(f"{op_id} is a multipart upload; jira-call does not send those")
+        raise Fatal(f"{op_id} is a multipart upload; {cfg.name} does not send those")
     args = {"op": op_id}
     for flag, why, applies in GATES:
         needed = applies(op)
@@ -149,9 +170,8 @@ def _validate(flags, pos=()):
 
 
 def _build_path(op, args):
-    values = _kv(args.get("path", []))
     path = op["path"]
-    for name, v in values.items():
+    for name, v in _kv(args.get("path", [])).items():
         path = path.replace("{" + name + "}", urllib.parse.quote(v, safe=""))
     return path
 
@@ -173,8 +193,18 @@ def _sibling_get(index, op):
     return None
 
 
-def _plan(get, args):
-    index = load_index()["ops"]
+def _item_get(index, op):
+    """The GET that reads one item of the collection a POST creates into: <path>/{one param}, no required query."""
+    for o in index.values():
+        head, _, last = o["path"].rpartition("/")
+        if (o["method"] == "GET" and head == op["path"] and re.fullmatch(r"\{[^{}/]+\}", last)
+                and not any(p["required"] and p["in"] == "query" for p in o["params"])):
+            return o
+    return None
+
+
+def _plan(get, args, cfg=JIRA):
+    index = load_index(cfg)["ops"]
     op = index[args["op"]]
     path = _build_path(op, args)
     base = {"op": args["op"], "method": op["method"], "path": path, "tier": op["tier"]}
@@ -198,16 +228,16 @@ def _plan(get, args):
     return base, (json.loads(args["body"]) if "body" in args else None)
 
 
-def _describe(base, body):
+def _describe(base, body, cfg=JIRA):
     notes = [f"{base['method']} {base['path']} ({base['tier']})"]
     if base.get("experimental"):
         notes.append("experimental: Atlassian may change or remove this operation without notice")
     if base.get("deprecated"):
         notes.append("deprecated: Atlassian plans to remove this operation")
     if base.get("no_readback"):
-        notes.append("no read-back: the index has no GET on this path, so apply cannot confirm the delete; check Jira after it")
+        notes.append("no read-back: the index has no GET on this path, so apply cannot confirm the delete; check the product after it")
     if base["method"] == "DELETE":
-        notes.append("IRREVERSIBLE: Jira has no undo for this delete" + (
+        notes.append("IRREVERSIBLE: no undo for this delete" + (
             "" if base.get("exists", True) else "; the target was not found just now"))
     elif base["tier"] == "destructive":
         notes.append("destructive tier: an admin or bulk change; check the body before you confirm")
@@ -216,7 +246,7 @@ def _describe(base, body):
     return notes
 
 
-def _send(http, args, base, body_text):
+def _send(http, args, base, body_text, cfg=JIRA):
     url = base["path"] + (f"?{_query(args)}" if args.get("query") else "")
     payload = body_text.encode() if body_text and body_text != "null" else None
     return http(base["method"], url, payload)
@@ -227,8 +257,8 @@ def _comparable(sent, cur):
 
 
 def _compare(sent, cur):
-    """False on a mismatch; True when every sent field was compared; "partial" when nested values were skipped;
-    "exists" when nothing could be compared (the resource was found and that is all that is known)."""
+    """False on a mismatch; True when every sent field was compared; PARTIAL when nested values were skipped;
+    EXISTS_ONLY when nothing could be compared (the resource was found and that is all that is known)."""
     if not isinstance(sent, dict) or not _comparable(sent, cur):
         return EXISTS_ONLY
     for k, v in sent.items():
@@ -238,8 +268,23 @@ def _compare(sent, cur):
     return PARTIAL if skipped else True
 
 
-def _readback(get, args, base, body_text, result):
-    index = load_index()["ops"]
+def _self_path(result, cfg):
+    """The resource path inside the response's self link (Jira `self`, Confluence v1 `_links.self`), or ''."""
+    links = result.get("_links") if isinstance(result, dict) else None
+    url = (result.get("self") if isinstance(result, dict) else None) or (
+        links.get("self") if isinstance(links, dict) else None)
+    if not isinstance(url, str):
+        return ""
+    full = urllib.parse.urlsplit(url).path
+    at = full.find(cfg.self_marker)  # the gateway prefixes /ex/<product>/<cloud id>; the site URL has no prefix
+    if at < 0:
+        return ""
+    got = full[at:] if cfg.self_keep else full[at + len(cfg.self_marker):]
+    return "" if ".." in got else got
+
+
+def _readback(get, args, base, body_text, result, cfg=JIRA):
+    index = load_index(cfg)["ops"]
     op = index[args["op"]]
     path = base["path"]
     sibling = _sibling_get(index, op)
@@ -258,15 +303,22 @@ def _readback(get, args, base, body_text, result):
         cur = get(path, {})
         if _comparable(sent, cur):
             return _compare(sent, cur)
-    if isinstance(result, dict) and isinstance(result.get("self"), str):
-        full = urllib.parse.urlsplit(result["self"]).path
-        at = full.find("/rest/api/3/")  # the gateway prefixes /ex/jira/<cloud id>; the site URL has no prefix
-        got = full[at:] if at >= 0 else ""
-        if got and ".." not in got:
-            cur = get(got, {})
-            return _compare(sent, cur)
-    raise Fatal("this operation has no read-back the index can derive; check the result in Jira")
+    got = _self_path(result, cfg)
+    if got:
+        return _compare(sent, get(got, {}))
+    new_id = str(result.get("id", "")) if isinstance(result, dict) else ""
+    if op["method"] == "POST" and PATH_VALUE_RE.match(new_id) and new_id.strip(".") and _item_get(index, op):
+        return _compare(sent, get(f"{path}/{new_id}", {}))
+    raise Fatal("this operation has no read-back the index can derive; check the result in the product")
 
 
-OPERATIONS["jira-call"] = {"product": "jira", "validate": _validate, "plan": _plan, "send": _send,
-                           "readback": _readback, "describe": _describe}
+def register(cfg):
+    OPERATIONS[cfg.name] = {
+        "product": cfg.product,
+        "validate": functools.partial(_validate, cfg=cfg), "plan": functools.partial(_plan, cfg=cfg),
+        "send": functools.partial(_send, cfg=cfg), "readback": functools.partial(_readback, cfg=cfg),
+        "describe": functools.partial(_describe, cfg=cfg), **cfg.extra}
+
+
+for _cfg in CONFIGS:
+    register(_cfg)

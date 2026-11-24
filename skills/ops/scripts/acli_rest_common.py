@@ -119,5 +119,5 @@ def read_env_file(env_file):
         text = env_file.read_text()
     except FileNotFoundError:
         raise Fatal(f"token file {env_file} not found (see the script docstring)") from None
-    pairs = re.findall(r"^\s*(?:export\s+)?([A-Z_]+)=(.*?)\s*$", text, re.M)
+    pairs = re.findall(r"^\s*(?:export\s+)?([A-Z_][A-Z0-9_]*)=(.*?)\s*$", text, re.M)
     return {k: v[1:-1] if len(v) > 1 and v[0] == v[-1] and v[0] in "\"'" else v for k, v in pairs}

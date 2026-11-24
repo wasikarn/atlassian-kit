@@ -48,7 +48,8 @@ ISSUETYPE_RE = re.compile(r"^[0-9]+$")
 METHOD = "GET"  # the only method this script may send: every request goes through http_request (opener, METHOD, …)
 FIND_USER_MAX = 50
 USAGE = ("usage: acli-rest-get.py transitions ISSUE-KEY | find-user QUERY | "
-         "createmeta PROJECT-KEY [ISSUETYPE-ID] | api <jira|confluence> <PATH> | jira-ops [TEXT ...]")
+         "createmeta PROJECT-KEY [ISSUETYPE-ID] | api <jira|confluence> <PATH> | jira-ops [TEXT ...] | "
+         "confluence-ops [TEXT ...]")
 # Jira Software reads outside /rest/api/3, GET only, each matched whole: board list/get/configuration/properties/
 # features, and the internal greenhopper board model (it has status names; the agile configuration has only ids).
 _Q = r"(\?[A-Za-z0-9_=&%,-]*)?"
@@ -59,17 +60,19 @@ AGILE_READ_RES = tuple(re.compile(p) for p in (
     r"/rest/agile/1[.]0/board/[0-9]+/properties/[A-Za-z0-9_-]+",
     r"/rest/greenhopper/1[.]0/rapidviewconfig/editmodel[?]rapidViewId=[0-9]+",
 ))
-API_PATH_RE = re.compile(r"^/(rest/api/3/|wiki/api/v2/)[A-Za-z0-9_?&=%,/-]*$")
+API_PATH_RE = re.compile(r"^/(rest/api/3/|wiki/api/v2/|wiki/rest/api/)[A-Za-z0-9_?&=%,/-]*$")
+V1_PREFIX = "/wiki/rest/api/"  # Confluence v1 reads use the classic-scope token, like the v1 writes
+V1_TOKEN_KEY = "ACLI_REST_WRITE_CONFLUENCE_V1_TOKEN"
 
 
-def product_token(host, email, env_file, product):
+def product_token(host, email, env_file, product, token_key=None):
     """Token, and the /ex base without the cloudId, for one product: read token for jira,
     the scoped Confluence token for confluence. Only if the file is written for this identity."""
     values = read_env_file(env_file)
     if product == "jira":
         pairs, token_key = (("ACLI_REST_READ_SITE", host), ("ACLI_REST_READ_EMAIL", email)), "ACLI_REST_READ_TOKEN"
     else:
-        pairs, token_key = (("ACLI_REST_WRITE_SITE", host), ("ACLI_REST_WRITE_EMAIL", email)), "ACLI_REST_WRITE_CONFLUENCE_TOKEN"
+        pairs, token_key = (("ACLI_REST_WRITE_SITE", host), ("ACLI_REST_WRITE_EMAIL", email)), token_key or "ACLI_REST_WRITE_CONFLUENCE_TOKEN"
     for key, want in pairs:
         if values.get(key) != want:
             raise Fatal(f"{key} in {env_file} does not match `acli jira auth status`")
@@ -78,10 +81,10 @@ def product_token(host, email, env_file, product):
     return values[token_key], f"https://{API_HOST}/ex/{product}"
 
 
-def read_session(opener, run, env_file, product="jira"):
+def read_session(opener, run, env_file, product="jira", token_key=None):
     """Resolve the target and return get(path, params) bound to it, METHOD-only."""
     host, email = acli_identity(run)
-    token, base = product_token(host, email, env_file, product)  # before any request
+    token, base = product_token(host, email, env_file, product, token_key)  # before any request
     cid = cloud_id(host, opener)
     print(f"target: {host} ({cid}) as {email}", file=sys.stderr)
 
@@ -148,19 +151,22 @@ def parse_args(args):
         return read_session, createmeta, rest
     if cmd == "jira-ops":
         return (lambda opener, run, env_file=ENV_FILE: None), jira_ops, rest
+    if cmd == "confluence-ops":
+        return (lambda opener, run, env_file=ENV_FILE: None), confluence_ops, rest
     if cmd == "api" and len(rest) == 2:
         if rest[0] not in ("jira", "confluence"):
             raise Fatal(f"product must be jira or confluence, not {rest[0]!r}")
         path = rest[1]
         agile_ok = rest[0] == 'jira' and any(r.fullmatch(path) for r in AGILE_READ_RES)
         if not agile_ok and (not API_PATH_RE.match(path) or (rest[0] == "jira" and not path.startswith("/rest/api/3/")) \
-                or (rest[0] == "confluence" and not path.startswith("/wiki/api/v2/"))):
-            raise Fatal(f"not an api path: path must start with /rest/api/3/ (jira) or /wiki/api/v2/ "
-                        f"(confluence), alphanumerics + ?&=%,/ only: {path!r}")
+                or (rest[0] == "confluence" and not path.startswith(("/wiki/api/v2/", V1_PREFIX)))):
+            raise Fatal(f"not an api path: path must start with /rest/api/3/ (jira), /wiki/api/v2/ or "
+                        f"/wiki/rest/api/ (confluence), alphanumerics + ?&=%,/ only: {path!r}")
         if not agile_ok and ("." in path or "." in urllib.parse.unquote(path)):
             raise Fatal(f"not an api path: dots are not allowed in or decoded into it: {path!r}")
         product = rest[0]
-        return (lambda opener, run, env_file=ENV_FILE: read_session(opener, run, env_file, product)), \
+        key = V1_TOKEN_KEY if path.startswith(V1_PREFIX) else None
+        return (lambda opener, run, env_file=ENV_FILE: read_session(opener, run, env_file, product, key)), \
             api_read, (rest[1],)
     raise Fatal(USAGE)
 
@@ -170,19 +176,33 @@ def api_read(get, path):
 
 
 JIRA_OPS_MAX = 40
+DATA_DIR = pathlib.Path(__file__).resolve().parent.parent / "data"
+
+
+def _ops_search(files, terms):
+    """Search pinned operation indexes (no network): every term must appear in the id, path or tag."""
+    want = [t.lower() for t in terms]
+    rows = []
+    for api, name in files:
+        try:
+            index = json.loads((DATA_DIR / name).read_text())["ops"]
+        except (OSError, ValueError, KeyError) as e:
+            raise Fatal(f"cannot read the operation index {name}: {type(e).__name__}") from None
+        for k, v in sorted(index.items()):
+            if all(t in f"{k} {v['path']} {v['tag']}".lower() for t in want):
+                rows.append({"api": api, "op": k, "method": v["method"], "path": v["path"], "tier": v["tier"],
+                             **({"experimental": True} if v.get("experimental") else {}),
+                             **({"deprecated": True} if v.get("deprecated") else {})})
+    return {"matches": len(rows), "shown": rows[:JIRA_OPS_MAX]}
 
 
 def jira_ops(_session, *terms):
-    """Search the pinned Jira v3 operation index (no network): every term must appear in the id, path or tag."""
-    try:
-        index = json.loads((pathlib.Path(__file__).resolve().parent.parent / "data" / "jira-v3-index.json").read_text())["ops"]
-    except (OSError, ValueError, KeyError) as e:
-        raise Fatal(f"cannot read the Jira operation index: {type(e).__name__}") from None
-    want = [t.lower() for t in terms]
-    rows = [{"op": k, "method": v["method"], "path": v["path"], "tier": v["tier"],
-             **({"experimental": True} if v.get("experimental") else {}), **({"deprecated": True} if v.get("deprecated") else {})}
-            for k, v in sorted(index.items()) if all(t in f"{k} {v['path']} {v['tag']}".lower() for t in want)]
-    return {"matches": len(rows), "shown": rows[:JIRA_OPS_MAX]}
+    return _ops_search((("jira", "jira-v3-index.json"),), terms)
+
+
+def confluence_ops(_session, *terms):
+    """v2 operations run with confluence-call, v1 with confluence-v1-call (see the api column)."""
+    return _ops_search((("v2", "confluence-v2-index.json"), ("v1", "confluence-v1-index.json")), terms)
 
 
 def main(argv, opener=None, run=run_command, env_file=ENV_FILE):

@@ -103,3 +103,6 @@ deny	accepted	git -C /work/atlassian-kit diff -- skills/ops/scripts/acli-edit.sh
 allow	rest-get-jira-ops	python3 skills/ops/scripts/acli-rest-get.py jira-ops component delete
 deny	rest-write-jira-call-plan	python3 skills/ops/scripts/acli-rest-write.py plan jira-call --op createComponent --body '{}'
 deny	rest-write-jira-call-apply	python3 skills/ops/scripts/acli-rest-write.py apply request.json --confirm abcdef123456
+allow	rest-get-confluence-ops	python3 skills/ops/scripts/acli-rest-get.py confluence-ops label
+deny	rest-write-confluence-call-plan	python3 skills/ops/scripts/acli-rest-write.py plan confluence-call --op createFolder --body '{}'
+deny	rest-write-confluence-v1-call-plan	python3 skills/ops/scripts/acli-rest-write.py plan confluence-v1-call --op createSpace --body '{}'

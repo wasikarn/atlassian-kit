@@ -46,7 +46,7 @@ from acli_rest_common import (  # noqa: E402
     cloud_id, default_opener, http_request, read_env_file, run_command,
 )
 from rest_write_base import OPERATIONS, _check_flags, _one, canonical, parse_flags  # noqa: E402
-import rest_ops_confluence, rest_ops_jira_boards, rest_ops_jira_issues, rest_ops_jira_spec  # noqa: E402,F401  (each registers its operations)
+import rest_ops_confluence, rest_ops_jira_boards, rest_ops_jira_issues, rest_ops_spec  # noqa: E402,F401  (each registers its operations)
 
 PRODUCT_BASE = {"jira": f"https://api.atlassian.com/ex/jira",
                 "confluence": f"https://api.atlassian.com/ex/confluence"}
@@ -56,7 +56,8 @@ USAGE = ("usage: acli-rest-write.py plan <operation> [--... VALUE] [--env-file F
          "apply <request-file> --confirm <12hex> [--env-file FILE]")
 
 
-def resolve_target(opener, run, flags, env_file, product, send_api=None, send_token_key=None):
+def resolve_target(opener, run, flags, env_file, product, send_api=None, send_token_key=None, read_api=None,
+                   read_token_key=None):
     """Validate the target before any token is used. Return (label, host, email, cid, token, get)."""
     host, email = acli_identity(run)
     alternate = pathlib.Path(_one(flags, "env-file")) if "env-file" in flags else None
@@ -78,19 +79,19 @@ def resolve_target(opener, run, flags, env_file, product, send_api=None, send_to
         if env.get(key) != want:
             raise Fatal(f"{key} in {used} does not name the target")
     token_key = f"ACLI_REST_WRITE_{product.upper()}_TOKEN"
-    if not env.get(token_key):
-        raise Fatal(f"{token_key} is missing in {used}")
-    send_key = send_token_key or token_key  # reads always use token_key; only the write call may use another
-    if not env.get(send_key):
-        raise Fatal(f"{send_key} is missing in {used}")
+    send_key = send_token_key or token_key  # only the write call may use another token than the product's
+    read_key = read_token_key or token_key  # reads default to the product token; a spec operation may name its own
+    for key in dict.fromkeys((token_key, send_key, read_key)):  # each distinct key must be present before any request
+        if not env.get(key):
+            raise Fatal(f"{key} is missing in {used}")
     cid = cloud_id(thost, opener)
     target = {"host": thost, "cloudId": cid, "email": temail}
-    api_suffix = {"jira": "", "confluence": "/wiki/api/v2"}[product]
+    api_suffix = read_api if read_api is not None else {"jira": "", "confluence": "/wiki/api/v2"}[product]
     base_url = f"{PRODUCT_BASE[product]}/{cid}{api_suffix}"
 
     def get(path, params=None):
         url = base_url + path + ("?" + urllib.parse.urlencode(params) if params else "")
-        return json.loads(http_request(opener, "GET", url, (temail, env[token_key])))
+        return json.loads(http_request(opener, "GET", url, (temail, env[read_key])))
 
     send_base = base_url if send_api is None else f"{PRODUCT_BASE[product]}/{cid}{send_api}"
     return label, target, env[send_key], get, send_base
@@ -118,7 +119,7 @@ def do_plan(opener, run, env_file, flags, pos):
         raise Fatal(f"unknown operation: {pos[0]!r} (registered: {', '.join(sorted(OPERATIONS))})")
     args = op["validate"]({k: v for k, v in flags.items() if k != "env-file"}, pos[1:])
     label, target, token, get, _ = resolve_target(opener, run, flags, env_file, op["product"], None,
-                                                   op.get("send_token_key"))
+                                                   op.get("send_token_key"), op.get("read_api"), op.get("read_token_key"))
     base, body = op["plan"](get, args)
     if op.get("planOnly"):
         print(json.dumps({"base": base, "body": body}, ensure_ascii=False))
@@ -186,7 +187,7 @@ def do_apply(opener, run, env_file, flags, pos):
         raise Fatal(f"{data['operation']} is read-only; there is nothing to apply")
     args = op["validate"](data["args"], ())
     label, target, token, get, send_base = resolve_target(opener, run, flags, env_file, op["product"], op.get("send_api"),
-                                                           op.get("send_token_key"))
+                                                           op.get("send_token_key"), op.get("read_api"), op.get("read_token_key"))
     if data["target"].get("host") != target["host"] or data["target"].get("email") != target["email"]:
         raise Fatal("the target changed since the plan; plan again")
     try:

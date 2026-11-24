@@ -537,6 +537,68 @@ def test_api_confluence_read_hits_the_v2_base_with_the_confluence_write_token():
     assert got == f"{EMAIL}:conf-tok"
 
 
+def test_api_confluence_v1_read_uses_the_v1_base_and_the_classic_v1_token():
+    base = f"https://api.atlassian.com/ex/confluence/{CID}/wiki/rest/api"
+    env = ENV_OK + (f"ACLI_REST_WRITE_SITE={HOST}\nACLI_REST_WRITE_EMAIL={EMAIL}\nACLI_REST_WRITE_CONFLUENCE_TOKEN=conf-tok\n"
+                    "ACLI_REST_WRITE_CONFLUENCE_V1_TOKEN=v1-tok\n")
+    code, out, err, op = run_main(["api", "confluence", "/wiki/rest/api/content/5"],
+                                  standard_routes([(f"{base}/content/5", lambda r: json.dumps({"id": "5"}))]), env=env)
+    assert code == 0, err
+    assert json.loads(out) == {"id": "5"}
+    import base64
+    got = base64.b64decode(op.calls[-1].get_header("Authorization").split(" ", 1)[1]).decode()
+    assert got == f"{EMAIL}:v1-tok", "a v1 read must use the v1 token, not the v2 one"
+
+
+def test_api_confluence_v1_read_refused_when_the_v1_token_is_missing():
+    env = ENV_OK + f"ACLI_REST_WRITE_SITE={HOST}\nACLI_REST_WRITE_EMAIL={EMAIL}\nACLI_REST_WRITE_CONFLUENCE_TOKEN=conf-tok\n"
+    code, _, err, op = run_main(["api", "confluence", "/wiki/rest/api/content/5"], [], env=env)
+    assert code == 1 and "ACLI_REST_WRITE_CONFLUENCE_V1_TOKEN" in err
+    assert all("/wiki/" not in r.full_url for r in op.calls)
+
+
+def test_api_jira_refuses_a_confluence_v1_path():
+    code, _, err, op = run_main(["api", "jira", "/wiki/rest/api/content/5"], [])
+    assert code == 1 and "not an api path" in err
+    assert op.calls == []
+
+
+def test_confluence_ops_searches_both_indexes_and_sends_no_request():
+    code, out, _, op = run_main(["confluence-ops", "label"], standard_routes())
+    data = json.loads(out)
+    assert code == 0 and data["matches"] > 0
+    assert {r["api"] for r in data["shown"]} == {"v1", "v2"}, "labels exist in both Confluence APIs"
+    assert op.calls == []
+
+
+def test_confluence_ops_names_the_api_so_the_right_operation_is_chosen():
+    code, out, _, _ = run_main(["confluence-ops", "createPage"], standard_routes())
+    rows = json.loads(out)["shown"]
+    assert code == 0 and ("v2", "createPage", "POST") in [(r["api"], r["op"], r["method"]) for r in rows]
+    assert all(r["api"] == "v2" for r in rows if r["op"] == "createPage")
+
+
+def test_confluence_ops_with_no_match_says_zero():
+    code, out, _, _ = run_main(["confluence-ops", "zzzz-no-such-op"], standard_routes())
+    assert code == 0 and json.loads(out) == {"matches": 0, "shown": []}
+
+
+def test_ops_search_names_the_unreadable_index_instead_of_crashing():
+    import tempfile
+    saved = rg.DATA_DIR
+    with tempfile.TemporaryDirectory() as d:
+        (Path(d) / "jira-v3-index.json").write_text("{broken")
+        rg.DATA_DIR = Path(d)
+        try:
+            code, _, err, op = run_main(["jira-ops", "x"], standard_routes())
+            assert code == 1 and "jira-v3-index.json" in err and "JSONDecodeError" in err
+            code, _, err, _ = run_main(["confluence-ops", "x"], standard_routes())
+            assert code == 1 and "confluence-v2-index.json" in err and "FileNotFoundError" in err
+        finally:
+            rg.DATA_DIR = saved
+    assert op.calls == []
+
+
 def test_api_rejects_an_unknown_product_before_any_request():
     code, _, err, op = run_main(["api", "slack", "/x"], [])
     assert code == 1 and "product must be jira or confluence" in err
