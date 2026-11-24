@@ -1854,6 +1854,21 @@ def test_confluence_call_names_confluence_not_jira_when_the_read_back_is_partial
     assert "check them in Confluence" in out2 and "Jira" not in out2
 
 
+def test_confluence_call_names_confluence_not_jira_when_the_read_back_only_finds_the_item():
+    def route(req):
+        u, m = urllib.parse.urlsplit(req.full_url).path, req.get_method()
+        if m == "POST" and u.endswith("/wiki/api/v2/folders"):
+            return json.dumps({"id": "77"})
+        if m == "GET" and u.endswith("/wiki/api/v2/folders/77"):
+            return json.dumps({"id": "77"})
+        raise AssertionError(f"unexpected {m} {u}")
+    code, out, err, _ = run(["plan", "confluence-call", "--op", "createFolder", "--body", '{"spaceId": "1", "title": "t"}'], [(CONF, route), tenant_route()])
+    assert code == 0, err
+    code, out2, err2, _ = run(["apply", str(request_path(out)), "--confirm", confirm_of(out)], [(CONF, route), tenant_route()])
+    assert code == 0, err2
+    assert "only confirmed the item exists" in out2 and "check them in Confluence" in out2 and "Jira" not in out2
+
+
 def test_jira_call_delete_needs_the_gate_flag_then_deletes_and_verifies_by_404():
     state = {"c": {"id": "11", "name": "api"}}
     code, _, err, op = run(["plan", "jira-call", "--op", "deleteComponent", "--path", "id=11"],

@@ -10,6 +10,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
       - run: python3 -m py_compile skills/*/scripts/*.py hooks/*.py
       - run: 'for f in skills/*/scripts/*.sh; do bash -n "$f"; done'
       - name: ADF round-trip
@@ -25,3 +27,15 @@ jobs:
             python3 "$t" || { echo "FAILED: $t"; fail=1; }
           done
           exit $fail
+      - name: coverage gate (100% on the spec engine and its generator)
+        run: |
+          pip install coverage
+          cd skills/ops/scripts
+          for t in test_rest_ops_spec.py test_gen_spec_index.py test_acli_rest_write.py test_acli_rest_get.py; do
+            coverage run --branch --data-file=/tmp/ak.cov --append "$t" > /dev/null
+          done
+          coverage report --data-file=/tmp/ak.cov --include='*/rest_ops_spec.py,*/gen_spec_index.py' --fail-under=100 --show-missing
+      - name: version bump
+        run: |
+          base="${{ github.event.pull_request.base.sha || github.event.before }}"
+          .github/check-version-bump.sh "$base"
