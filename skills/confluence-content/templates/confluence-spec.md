@@ -35,12 +35,12 @@ Loaded by `atlassian-kit:confluence-content` Step 1–2. AC format/register/cove
 
 **เกณฑ์การยอมรับ (Acceptance Criteria):**
 
-**AC1 — [Short title]**
+**AC1: [Short title]**
 * กำหนดให้: [precondition]
 * เมื่อ: [action]
 * ผลลัพธ์: [expected outcome — be specific]
 
-**AC2 — [Short title]**
+**AC2: [Short title]**
 * กำหนดให้: [precondition]
 * เมื่อ: [action]
 * ผลลัพธ์: [expected outcome]
@@ -51,7 +51,7 @@ Loaded by `atlassian-kit:confluence-content` Step 1–2. AC format/register/cove
 
 **เกณฑ์การยอมรับ (Acceptance Criteria):**
 
-**AC1 — [Short title]**
+**AC1: [Short title]**
 * กำหนดให้: [precondition]
 * เมื่อ: [action]
 * ผลลัพธ์: [expected outcome]

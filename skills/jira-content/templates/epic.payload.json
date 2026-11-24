@@ -26,7 +26,7 @@
         "content": [
           {
             "type": "text",
-            "text": "ทำไมต้องทำ / business outcome ที่ต้องการ — 1–2 ประโยค",
+            "text": "ทำไมต้องทำ / business outcome ที่ต้องการ, 1–2 ประโยค",
             "marks": [
               {
                 "type": "em"
@@ -52,7 +52,7 @@
           "content": [
             {
               "type": "text",
-              "text": "สิ่งที่ epic นี้ครอบคลุม — ระดับ high-level (ไม่ใช่ไฟล์/บรรทัด)",
+              "text": "สิ่งที่ epic นี้ครอบคลุม, ระดับ high-level (ไม่ใช่ไฟล์/บรรทัด)",
               "marks": [
                 {
                   "type": "em"
@@ -78,7 +78,7 @@
         "content": [
           {
             "type": "text",
-            "text": "สิ่งที่ epic นี้จะไม่แตะ — ป้องกัน scope creep",
+            "text": "สิ่งที่ epic นี้จะไม่แตะ, ป้องกัน scope creep",
             "marks": [
               {
                 "type": "em"
@@ -110,7 +110,7 @@
                 "content": [
                   {
                     "type": "text",
-                    "text": "<ผลลัพธ์ระดับ epic — yes/no ได้ วัดได้ ใช้ภาษาที่ PO เข้าใจ>"
+                    "text": "<ผลลัพธ์ระดับ epic, yes/no ได้ วัดได้ ใช้ภาษาที่ PO เข้าใจ>"
                   }
                 ]
               }
@@ -124,7 +124,7 @@
                 "content": [
                   {
                     "type": "text",
-                    "text": "<เงื่อนไขถัดไป — ระดับ outcome ไม่ใช่ task>"
+                    "text": "<เงื่อนไขถัดไป, ระดับ outcome ไม่ใช่ task>"
                   }
                 ]
               }
@@ -155,7 +155,7 @@
                 "content": [
                   {
                     "type": "text",
-                    "text": "<deliverable / milestone — ระดับผลงาน ไม่ใช่ task list>"
+                    "text": "<deliverable / milestone, ระดับผลงาน ไม่ใช่ task list>"
                   }
                 ]
               }
@@ -180,7 +180,7 @@
         "content": [
           {
             "type": "text",
-            "text": "สิ่งที่ block หรือต้องรอ / risk ที่อาจทำให้สไลด์ — ลบได้ถ้าไม่มี",
+            "text": "สิ่งที่ block หรือต้องรอ / risk ที่อาจทำให้สไลด์, ลบได้ถ้าไม่มี",
             "marks": [
               {
                 "type": "em"
@@ -206,7 +206,7 @@
         "content": [
           {
             "type": "text",
-            "text": "Task/Story/Sub-task ที่จะสร้างภายใต้ epic นี้ — ลิสต์คร่าวๆ หรือลบถ้ายังไม่ได้ breakdown",
+            "text": "Task/Story/Sub-task ที่จะสร้างภายใต้ epic นี้, ลิสต์คร่าวๆ หรือลบถ้ายังไม่ได้ breakdown",
             "marks": [
               {
                 "type": "em"
@@ -238,7 +238,7 @@
                 "content": [
                   {
                     "type": "text",
-                    "text": "<plan / PRD / Figma / link — ลบได้ถ้าไม่มี>"
+                    "text": "<plan / PRD / Figma / link, ลบได้ถ้าไม่มี>"
                   }
                 ]
               }

@@ -46,13 +46,13 @@ Write in Thai with this structure. Fill each section from the Step 1 answers onl
 
 # Acceptance Criteria
 
-**AC1 — <ชื่อสั้น>**
+**AC1: <ชื่อสั้น>**
 
 * กำหนดให้: <สถานะก่อนทำ>
 * เมื่อ: <การกระทำ>
 * ผลลัพธ์: <ผลที่เห็น ตอบ yes/no ได้ ใช้คำที่ PO/QA เข้าใจ ไม่ใช้ชื่อ field, enum, API>
 
-**AC2 — <ชื่อสั้น>**
+**AC2: <ชื่อสั้น>**
 
 * กำหนดให้: <สถานะก่อนทำ>
 * เมื่อ: <การกระทำ>

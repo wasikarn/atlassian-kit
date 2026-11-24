@@ -100,13 +100,13 @@ Write in Thai with this structure. Fill each section from the Step 1 answers onl
 
 ## 🧪 เกณฑ์การยอมรับการแก้ไข (Acceptance Criteria) สำหรับ QA
 
-**AC1 — ยืนยันว่าแก้แล้ว (Fix verified)**
+**AC1: ยืนยันว่าแก้แล้ว (Fix verified)**
 
 * กำหนดให้: [สถานะที่เคยทำให้เกิดบั๊ก]
 * เมื่อ: [การกระทำที่เคยทำให้เกิดบั๊ก]
 * ผลลัพธ์: [ผลที่ถูกต้องตอนนี้ ระบุให้เจาะจง]
 
-**AC2 — ตรวจ Regression**
+**AC2: ตรวจ Regression**
 
 * กำหนดให้: [สถานะหรือ flow ที่ไม่เกี่ยวกับบั๊ก]
 * เมื่อ: [การกระทำปกติ]

@@ -27,7 +27,7 @@
         "content": [
           {
             "type": "text",
-            "text": "1 action ชัดเจน ทำจบในตัว — แคบกว่า task + ไฟล์ที่เกี่ยว",
+            "text": "1 action ชัดเจน ทำจบในตัว, แคบกว่า task + ไฟล์ที่เกี่ยว",
             "marks": [
               {
                 "type": "em"
@@ -79,7 +79,7 @@
         "content": [
           {
             "type": "text",
-            "text": "AC1 — <short title>",
+            "text": "AC1: <short title>",
             "marks": [
               {
                 "type": "strong"
@@ -127,7 +127,7 @@
                 "content": [
                   {
                     "type": "text",
-                    "text": "ผลลัพธ์: <happy path — yes/no ได้ ใช้คำที่เข้าใจง่าย ไม่ใช้ชื่อ field/enum/API>"
+                    "text": "ผลลัพธ์: <happy path, yes/no ได้ ใช้คำที่เข้าใจง่าย ไม่ใช้ชื่อ field/enum/API>"
                   }
                 ]
               }
@@ -140,7 +140,7 @@
         "content": [
           {
             "type": "text",
-            "text": "AC2 — <short title>",
+            "text": "AC2: <short title>",
             "marks": [
               {
                 "type": "strong"
@@ -188,7 +188,7 @@
                 "content": [
                   {
                     "type": "text",
-                    "text": "ผลลัพธ์: <error หรือ boundary ถ้าเกี่ยวข้อง — ลบ AC นี้ได้ถ้าไม่มี>"
+                    "text": "ผลลัพธ์: <error หรือ boundary ถ้าเกี่ยวข้อง, ลบ AC นี้ได้ถ้าไม่มี>"
                   }
                 ]
               }
@@ -219,7 +219,7 @@
                 "content": [
                   {
                     "type": "text",
-                    "text": "<path> — <การเปลี่ยน>"
+                    "text": "<path>: <การเปลี่ยน>"
                   }
                 ]
               }

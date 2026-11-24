@@ -8,6 +8,10 @@ Pre-`1.0.0`: breaking changes may land in any `0.x` release.
 This file starts at `0.1.18` — releases before that predate the changelog. See
 `git log` for the full history back to `0.1.0`.
 
+## [0.4.14] — 2026-11-24
+
+- Ticket text from the Jira templates and the Confluence spec template no longer carries em dashes (the mark that reads as AI-written): AC headings are `AC1: title`, hints use a comma or a colon. Doc prose in SKILL.md files is unchanged.
+
 ## [0.4.13] — 2026-11-24
 
 - fields.md § Dependencies: `link create --out A --in B --type Blocks` verified live on APPR (A blocks B, both sides read back); the untested-direction caveat is gone.

@@ -52,7 +52,7 @@
         "content": [
           {
             "type": "text",
-            "text": "พื้นหลัง / why เราทำ — 1–2 ประโยค เข้าใจได้โดยไม่ต้อง technical",
+            "text": "พื้นหลัง / why เราทำ, 1–2 ประโยค เข้าใจได้โดยไม่ต้อง technical",
             "marks": [
               {
                 "type": "em"
@@ -111,7 +111,7 @@
         "content": [
           {
             "type": "text",
-            "text": "ไม่อยู่ในขอบเขตรอบนี้ (สำคัญ — แจ้ง QA ให้ทราบ)",
+            "text": "ไม่อยู่ในขอบเขตรอบนี้ (สำคัญ, แจ้ง QA ให้ทราบ)",
             "marks": [
               {
                 "type": "strong"
@@ -156,7 +156,7 @@
         "content": [
           {
             "type": "text",
-            "text": "AC1 — <short title>",
+            "text": "AC1: <short title>",
             "marks": [
               {
                 "type": "strong"
@@ -204,7 +204,7 @@
                 "content": [
                   {
                     "type": "text",
-                    "text": "ผลลัพธ์: <happy path — yes/no ได้ ใช้คำที่ PO/QA เข้าใจ ไม่ใช้ชื่อ field/enum/API>"
+                    "text": "ผลลัพธ์: <happy path, yes/no ได้ ใช้คำที่ PO/QA เข้าใจ ไม่ใช้ชื่อ field/enum/API>"
                   }
                 ]
               }
@@ -217,7 +217,7 @@
         "content": [
           {
             "type": "text",
-            "text": "AC2 — <short title>",
+            "text": "AC2: <short title>",
             "marks": [
               {
                 "type": "strong"
@@ -278,7 +278,7 @@
         "content": [
           {
             "type": "text",
-            "text": "AC3 — <short title>",
+            "text": "AC3: <short title>",
             "marks": [
               {
                 "type": "strong"
@@ -326,7 +326,7 @@
                 "content": [
                   {
                     "type": "text",
-                    "text": "ผลลัพธ์: <boundary (เช่น 0 = ฟรี) หรือ regression — Story ต้องมีอย่างน้อย 3 AC เสมอ ถ้าไม่มี boundary/regression ที่เข้ากับเคสนี้ ให้แทนด้วย per-surface AC หรือ fallback AC (ข้อมูลเดิมที่ยังไม่มีของใหม่) แทน — ห้ามลบ AC นี้ทิ้ง>"
+                    "text": "ผลลัพธ์: <boundary (เช่น 0 = ฟรี) หรือ regression, Story ต้องมีอย่างน้อย 3 AC เสมอ ถ้าไม่มี boundary/regression ที่เข้ากับเคสนี้ ให้แทนด้วย per-surface AC หรือ fallback AC (ข้อมูลเดิมที่ยังไม่มีของใหม่) แทน, ห้ามลบ AC นี้ทิ้ง>"
                   }
                 ]
               }
@@ -351,7 +351,7 @@
         "content": [
           {
             "type": "text",
-            "text": "มุมมอง dev — approach, constraints, หรือลบ section นี้ถ้ายังไม่รู้",
+            "text": "มุมมอง dev, approach, constraints, หรือลบ section นี้ถ้ายังไม่รู้",
             "marks": [
               {
                 "type": "em"
@@ -377,7 +377,7 @@
         "content": [
           {
             "type": "text",
-            "text": "สิ่งที่ block หรือต้องรอ — ลบได้ถ้าไม่มี",
+            "text": "สิ่งที่ block หรือต้องรอ, ลบได้ถ้าไม่มี",
             "marks": [
               {
                 "type": "em"
@@ -409,7 +409,7 @@
                 "content": [
                   {
                     "type": "text",
-                    "text": "<plan / Figma / PR / link — ลบได้ถ้าไม่มี>"
+                    "text": "<plan / Figma / PR / link, ลบได้ถ้าไม่มี>"
                   }
                 ]
               }

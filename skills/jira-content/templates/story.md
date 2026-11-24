@@ -67,19 +67,19 @@ Write in Thai with this structure. Fill each section from the Step 1 answers onl
 
 ## 🧪 เกณฑ์การยอมรับ (Acceptance Criteria) สำหรับ QA
 
-**AC1 — [ชื่อสั้น] (happy path)**
+**AC1: [ชื่อสั้น] (happy path)**
 
 * กำหนดให้: [สถานะก่อนทำ]
 * เมื่อ: [การกระทำ]
 * ผลลัพธ์: [ผลที่เห็น ระบุให้เจาะจง ใช้ภาษาธุรกิจ]
 
-**AC2 — [ชื่อสั้น] (error หรือ edge case)**
+**AC2: [ชื่อสั้น] (error หรือ edge case)**
 
 * กำหนดให้: [สถานะก่อนทำ]
 * เมื่อ: [การกระทำ]
 * ผลลัพธ์: [ผลที่เห็น]
 
-**AC3 — [ชื่อสั้น] (regression หรือ permission)**
+**AC3: [ชื่อสั้น] (regression หรือ permission)**
 
 * กำหนดให้: [สถานะก่อนทำ]
 * เมื่อ: [การกระทำ]

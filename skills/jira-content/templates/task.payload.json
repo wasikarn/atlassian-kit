@@ -26,7 +26,7 @@
         "content": [
           {
             "type": "text",
-            "text": "ทำไมต้องทำ / เป้าหมาย — 1–2 ประโยค + link plan/spec ถ้ามี",
+            "text": "ทำไมต้องทำ / เป้าหมาย, 1–2 ประโยค + link plan/spec ถ้ามี",
             "marks": [
               {
                 "type": "em"
@@ -58,7 +58,7 @@
                 "content": [
                   {
                     "type": "text",
-                    "text": "<ไฟล์/โมดูล> — <สิ่งที่เปลี่ยน> (line ref ถ้ามี)"
+                    "text": "<ไฟล์/โมดูล>: <สิ่งที่เปลี่ยน> (line ref ถ้ามี)"
                   }
                 ]
               }
@@ -72,7 +72,7 @@
                 "content": [
                   {
                     "type": "text",
-                    "text": "<ไฟล์ถัดไป> — <การเปลี่ยน>"
+                    "text": "<ไฟล์ถัดไป>: <การเปลี่ยน>"
                   }
                 ]
               }
@@ -97,7 +97,7 @@
         "content": [
           {
             "type": "text",
-            "text": "สิ่งที่ task นี้จะไม่แตะ (กันงานบานปลาย) — ลบได้ถ้าไม่มี",
+            "text": "สิ่งที่ task นี้จะไม่แตะ (กันงานบานปลาย), ลบได้ถ้าไม่มี",
             "marks": [
               {
                 "type": "em"
@@ -123,7 +123,7 @@
         "content": [
           {
             "type": "text",
-            "text": "AC1 — <short title>",
+            "text": "AC1: <short title>",
             "marks": [
               {
                 "type": "strong"
@@ -171,7 +171,7 @@
                 "content": [
                   {
                     "type": "text",
-                    "text": "ผลลัพธ์: <happy path — yes/no ได้ ใช้คำที่ PO/QA เข้าใจ ไม่ใช้ชื่อ field/enum/API>"
+                    "text": "ผลลัพธ์: <happy path, yes/no ได้ ใช้คำที่ PO/QA เข้าใจ ไม่ใช้ชื่อ field/enum/API>"
                   }
                 ]
               }
@@ -184,7 +184,7 @@
         "content": [
           {
             "type": "text",
-            "text": "AC2 — <short title>",
+            "text": "AC2: <short title>",
             "marks": [
               {
                 "type": "strong"
@@ -245,7 +245,7 @@
         "content": [
           {
             "type": "text",
-            "text": "AC3 — <short title>",
+            "text": "AC3: <short title>",
             "marks": [
               {
                 "type": "strong"
@@ -293,7 +293,7 @@
                 "content": [
                   {
                     "type": "text",
-                    "text": "ผลลัพธ์: <boundary หรือ regression ถ้าเกี่ยวข้อง — ลบ AC นี้ได้ถ้าไม่มี>"
+                    "text": "ผลลัพธ์: <boundary หรือ regression ถ้าเกี่ยวข้อง, ลบ AC นี้ได้ถ้าไม่มี>"
                   }
                 ]
               }
@@ -350,7 +350,7 @@
                 "content": [
                   {
                     "type": "text",
-                    "text": "<plan / Figma / PR / link — ลบได้ถ้าไม่มี>"
+                    "text": "<plan / Figma / PR / link, ลบได้ถ้าไม่มี>"
                   }
                 ]
               }
