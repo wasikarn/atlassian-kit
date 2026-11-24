@@ -10,7 +10,7 @@ This file holds only the Story questions and the Thai description.
 
 ## Step 1: gather
 
-Ask all six at once. Done when items 1 to 4 and 6 each have an answer from the user. Item 5 may be "none". If the user cannot answer one, write `ไม่ทราบ` in that section; a guess is never an answer.
+Ask all eight at once. Done when items 1 to 4 and 6 each have an answer from the user. Items 5, 7 and 8 may be "none". If the user cannot answer one, write `ไม่ทราบ` in that section; a guess is never an answer.
 
 1. **Feature name**: a short Thai title naming the outcome, e.g. "หักยอดคงเหลือตอนลูกค้ายืนยันการสั่งซื้อ"
 2. **Why now**: the business reason or the problem being solved
@@ -18,6 +18,12 @@ Ask all six at once. Done when items 1 to 4 and 6 each have an answer from the u
 4. **Out of scope**: what this round does not cover (QA relies on this list)
 5. **PO decisions**: trade-offs or edge cases the PO must sign off on
 6. **Acceptance criteria**: rough testable behaviors; you format them
+7. **Sub-tasks**: the planned steps and who owns each
+8. **Dependencies**: tickets this story blocks or waits on, as keys
+
+If the behavior looks too big for one sprint, say so and offer to split it into stories, or to raise an Epic, before Step 2.
+
+Sub-tasks and dependencies do not go in the description. After the story exists, create each sub-task with [`subtask.md`](subtask.md) and each dependency as an issue link (see [`fields.md`](fields.md) § Dependencies).
 
 If the user's first message already answers these, go straight to Step 2.
 

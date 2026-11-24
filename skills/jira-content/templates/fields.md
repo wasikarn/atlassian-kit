@@ -60,6 +60,16 @@ Two more fields sit on the Bug screen. Both go through `additionalAttributes` an
 
 Environment is free text in Jira, so there is no dropdown. Offer `production / uat / sit / staging / dev / local` as suggestions and use whatever the user types, unchanged; if the user gives no value, leave it unset. The description holds no environment or version text; these fields do (see `bug.md`).
 
+## Dependencies
+
+Jira records a dependency as an issue link (blocks, is blocked by, relates to, duplicates, clones), not as description text. The create payload has no link field, so create the ticket first, then link it:
+
+```bash
+acli jira workitem link create --out KEY-1 --in KEY-2 --type Blocks
+```
+
+This is a write: show the pair, the direction and the type, and run it only after the user confirms. The direction of `--out` and `--in` was not tested here.
+
 ## Not supported yet
 
 | Field | Why |

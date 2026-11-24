@@ -10,7 +10,7 @@ The section names below match `task.payload.json`, so a ticket written from this
 
 ## Step 1: gather
 
-Ask all six at once. Done when items 1 to 4 each have an answer from the user. Items 5 and 6 may be "none". If the user cannot answer one, write `ไม่ทราบ` in that section; a guess is never an answer.
+Ask all seven at once. Done when items 1 to 4 each have an answer from the user. Items 5 to 7 may be "none". If the user cannot answer one, write `ไม่ทราบ` in that section; a guess is never an answer.
 
 1. **Task title**: a Thai imperative verb plus the concrete object, e.g. "เพิ่ม index ตาราง orders ให้ query ยืนยันคำสั่งซื้อ"
 2. **Why**: the goal, with a link to the plan or spec if there is one
@@ -18,6 +18,9 @@ Ask all six at once. Done when items 1 to 4 each have an answer from the user. I
 4. **Done check**: what the person verifying the work will see once it is finished (feeds the ACs)
 5. **Out of scope**: what this task will not touch
 6. **Tests**: which assertions or test cases must pass
+7. **Dependencies**: tickets this task blocks or waits on, as keys
+
+A dependency does not go in the description. After the task exists, create it as an issue link (see [`fields.md`](fields.md) § Dependencies).
 
 If the user's first message already answers these, go straight to Step 2.
 

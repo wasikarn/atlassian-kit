@@ -12,11 +12,13 @@ The section names below match `epic.payload.json`, so a ticket written from this
 Ask all six at once. Done when items 1 to 4 each have an answer from the user. Items 5 and 6 may be "none yet". If the user cannot answer one, write `ไม่ทราบ` in that section; a guess is never an answer.
 
 1. **Epic title**: a Thai noun phrase naming the initiative, e.g. "ระบบคิดค่าบริการแบบ Traffic-based สำหรับ Campaign"
-2. **Goal**: the business outcome this epic exists to reach
+2. **Goal**: the business outcome this epic exists to reach, and the goal, OKR or initiative it rolls up to
 3. **Scope and out of scope**: what the epic covers and what it leaves alone, at the level of features, not files
 4. **Success criteria**: outcomes the PO can answer yes or no to once the epic ends
 5. **Deliverables**: the shippable pieces or milestones
 6. **Dependencies, risks and known child items**: what blocks it, what could slip, which tasks or stories are already planned
+
+An epic is work estimated in weeks or more. If the user describes work of hours or days, say a Story or Task fits better and ask before going on.
 
 If the user's first message already answers these, go straight to Step 2.
 
@@ -29,7 +31,7 @@ Write in Thai with this structure. Fill each section from the Step 1 answers onl
 ```
 # Goal
 
-[ผลลัพธ์ทางธุรกิจที่ต้องการ 1-2 ประโยค]
+[ผลลัพธ์ทางธุรกิจที่ต้องการ 1-2 ประโยค พร้อม goal, OKR หรือ initiative ที่ผูกอยู่]
 
 # Scope
 
