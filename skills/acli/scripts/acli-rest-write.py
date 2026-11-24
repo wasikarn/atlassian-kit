@@ -54,7 +54,7 @@ FILE_KEYS = {"schema", "created", "operation", "args", "target", "base", "body_t
 USAGE = ("usage: acli-rest-write.py plan <operation> [--... VALUE] [--env-file FILE] | "
          "apply <request-file> --confirm <12hex> [--env-file FILE]")
 
-OPERATIONS = {}  # name -> {product, validate(flags)->args, plan(get,args)->(base,body), send(http,args,base,body_text)->text, readback(get,args,base,body_text,result)->bool}
+OPERATIONS = {}  # name -> {product, validate(flags)->args, plan(get,args)->(base,body), send(http,args,base,body_text)->text, readback(get,args,base,body_text,result)->bool, notes?(args,flags)->[str], describe?(base,body)->[str]}
 KEY_RE = re.compile(r"^[A-Z][A-Z0-9_]+-[0-9]+$")
 SPACE_KEY_RE = re.compile(r"^[A-Z][A-Z0-9]*$")
 PAGE_ID_RE = re.compile(r"^[0-9]+$")
@@ -360,7 +360,7 @@ def do_apply(opener, run, env_file, flags, pos):
         result = result_text[:200]
     try:
         ok = op["readback"](get, args, base, data["body_text"], result)
-    except (Fatal, ValueError, TypeError, KeyError, AttributeError) as e:
+    except (Fatal, ValueError, TypeError, KeyError, AttributeError, HttpError, NetError) as e:
         return _exit3(f"the read-back failed ({e})")
     if not ok:
         return _exit3("the read-back does not match what was sent", str(result)[:200])
@@ -766,7 +766,7 @@ OPERATIONS["issue-delete"] = {"product": "jira", "validate": _validate_issue_del
 # from third-party documentation and is UNVERIFIED until the first apply, which the plan says.
 
 BOARD_ID_RE = re.compile(r"^[0-9]{1,9}$")
-PROP_KEY_RE = re.compile(r"^[A-Za-z0-9._-]{1,255}$")
+PROP_KEY_RE = re.compile(r"^[A-Za-z0-9_-]{1,255}$")  # no dot: ".." must not reach the URL
 EDITMODEL_PATH = "/rest/greenhopper/1.0/rapidviewconfig/editmodel"
 COLUMNS_PATH = "/rest/greenhopper/1.0/rapidviewconfig/columns"
 
@@ -899,7 +899,7 @@ def _plan_board_delete(get, args):
 
 def _describe_board_delete(base, body):
     return [f"IRREVERSIBLE: board {base['board']} ({base['name']!r}, {base['type']}, project {base['project']}) is deleted. "
-            "Its filter and issues stay; a new board on that filter needs acli jira board create --filter-id."]
+            "Jira keeps its filter and issues; a new board on that filter needs acli jira board create --filter-id."]
 
 
 def _send_board_delete(http, args, base, body_text):

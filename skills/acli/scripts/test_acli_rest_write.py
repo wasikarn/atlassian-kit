@@ -1725,6 +1725,8 @@ def _board_routes(state):
     def route(req):
         u, m = urllib.parse.urlsplit(req.full_url).path, req.get_method()
         if m == "GET" and u.endswith("/rest/agile/1.0/board/55"):
+            if state.get("deleted") and state.get("rb500"):
+                return urllib.error.HTTPError(req.full_url, 500, "boom", http.client.HTTPMessage(), io.BytesIO(b"{}"))
             if state.get("deleted"):
                 return urllib.error.HTTPError(req.full_url, 404, "nf", http.client.HTTPMessage(), io.BytesIO(b"{}"))
             return json.dumps({"id": 55, "name": "Old board", "type": "kanban", "location": {"projectKey": "APPR"}})
@@ -1772,10 +1774,19 @@ def test_board_property_set_shows_old_and_new_and_verifies_by_read_back():
 
 
 def test_board_property_set_refuses_a_bad_key_or_value_before_any_request():
-    for argv in (["--board", "55", "--key", "a/b", "--value", "1"], ["--board", "55", "--key", "k", "--value", "{bad"],
+    for argv in (["--board", "55", "--key", "..", "--value", "1"], ["--board", "55", "--key", "a/b", "--value", "1"], ["--board", "55", "--key", "k", "--value", "{bad"],
                  ["--board", "55", "--value", "1"]):
         code, _, _, op = run(["plan", "board-property-set", *argv], [tenant_route()])
         assert code == 1 and op.calls == [], argv
+
+
+def test_board_delete_reports_sent_but_unverified_when_the_read_back_errors():
+    state = {"rb500": True}
+    code, out, err, _ = run(["plan", "board-delete", "--board", "55"], _board_routes(state) + [tenant_route()])
+    assert code == 0, err
+    code, _, err2, _ = run(["apply", str(request_path(out)), "--confirm", confirm_of(out)],
+                           _board_routes(state) + [tenant_route()])
+    assert code == 3 and "read-back" in err2 and state["deleted"] is True, err2
 
 
 if __name__ == "__main__":
