@@ -571,6 +571,21 @@ def test_api_allows_only_the_agile_board_configuration_path():
     assert code == 1 and op.calls == [], err
 
 
+def test_api_allows_the_board_reads_and_the_greenhopper_board_model_but_nothing_that_writes():
+    env_routes = [(f"https://{HOST}/_edge/tenant_info", lambda r: json.dumps({"cloudId": CID}))]
+    ok = {"/rest/greenhopper/1.0/rapidviewconfig/editmodel?rapidViewId=10103": "{}",
+          "/rest/agile/1.0/board/10103": "{}", "/rest/agile/1.0/board/10103/properties/cml": "{}",
+          "/rest/agile/1.0/board?name=CML%20migration": "{}"}
+    for path, body in ok.items():
+        code, _, err, _ = run_main(["api", "jira", path], env_routes + [(f"{JIRA}{path}", lambda r, b=body: b)])
+        assert code == 0, (path, err)
+    for path in ("/rest/greenhopper/1.0/rapidviewconfig/columns", "/rest/greenhopper/1.0/rapidviewconfig/editmodel",
+                 "/rest/agile/1.0/board/10103/properties/a.b", "/rest/agile/1.0/board/10103/issue",
+                 "/rest/greenhopper/1.0/rapidviewconfig/editmodel?rapidViewId=1&x=2"):
+        code, _, err, op = run_main(["api", "jira", path], [])
+        assert code == 1 and "not an api path" in err and op.calls == [], (path, err)
+
+
 if __name__ == "__main__":
     failed = 0
     tests = [(n, f) for n, f in sorted(globals().items()) if n.startswith("test_") and callable(f)]
