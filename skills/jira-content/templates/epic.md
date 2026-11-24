@@ -26,7 +26,7 @@ Ask the optional fields in [`fields.md`](fields.md) in the same message (priorit
 
 ## Step 2: write the description
 
-Write in Thai with this structure. Fill each section from the Step 1 answers only. Done when no `< >` placeholder is left and every Success Criteria line can be answered yes or no.
+Write in Thai with this structure. Fill each section from the Step 1 answers only, then run the two passes in [`README.md`](README.md) § Writing rules item 6. Done when no `< >` placeholder is left and every Success Criteria line can be answered yes or no.
 
 ```
 # Goal

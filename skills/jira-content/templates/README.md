@@ -23,7 +23,7 @@ These apply to every sentence a template asks you to write. Each guided file poi
 3. One idea per line. Use plain verbs (คือ, เป็น, มี). Leave out importance claims ("สำคัญอย่างยิ่ง", "ครอบคลุม", "ยกระดับ"), reassurance, and a closing line that restates the section.
 4. Delete a section that has nothing real in it. A required section is never deleted; write `ไม่ทราบ` instead.
 5. Keep technical terms in English (repo, branch, deploy). Write quantities as Arabic numerals ("2 ตัว") and put a space between Thai and English words.
-6. When `siang:humanize` is installed, run it over the prose fields (summary, reason, impact, context). It never touches AC blocks, code, IDs or quoted error text.
+6. After drafting, run two passes over the prose fields (summary, reason, impact, context, scope, notes), in this order: `siang:technical-writing` (the reader can act on each line; one idea per line), then `siang:humanize` (remove the marks that read as AI-written, such as em dashes and filler). Neither pass touches AC blocks, section headings, code, IDs or quoted error text, and neither adds a fact the user did not give. Done when both passes have run and the preview shows the result. If the `siang` plugin is not installed, say so in the preview and apply rules 1 to 5 by hand.
 
 ## Two paths, same sections
 
