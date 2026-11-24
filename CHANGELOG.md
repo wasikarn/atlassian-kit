@@ -8,6 +8,9 @@ Pre-`1.0.0`: breaking changes may land in any `0.x` release.
 This file starts at `0.1.18` — releases before that predate the changelog. See
 `git log` for the full history back to `0.1.0`.
 
+## [0.2.1] — 2026-11-24
+**Own marketplace.** `.claude-plugin/marketplace.json` makes this repo its own marketplace (name `atlassian-kit`), so it no longer depends on the `wasikarn` marketplace in `method-harness`. Install: `/plugin marketplace add wasikarn/atlassian-kit`, then `/plugin install atlassian-kit@atlassian-kit`; the `settings.json` key becomes `atlassian-kit@atlassian-kit`.
+
 ## [0.2.0] — 2026-11-24
 **Renamed to `atlassian-kit`; the `acli` skill is now `ops`; the REST write script is split.** The plugin covers Jira,
 Confluence, acli and REST, so the name no longer says only Jira and acli.

@@ -68,17 +68,17 @@ duplicating credentials and rewriting every MCP tool literal for no functional g
 ## Install
 
 ```
-/plugin marketplace add wasikarn/method-harness
-/plugin install atlassian-kit@wasikarn
+/plugin marketplace add wasikarn/atlassian-kit
+/plugin install atlassian-kit@atlassian-kit
 ```
 
-Ships `defaultEnabled: false` — add `"atlassian-kit@wasikarn": true` to your Claude Code
+Ships `defaultEnabled: false` — add `"atlassian-kit@atlassian-kit": true` to your Claude Code
 `settings.json` after install, then restart.
 
 ## Versioning
 
-Bump `version` in `.claude-plugin/plugin.json` on every release (the `wasikarn` marketplace entry lives
-in `wasikarn/method-harness` and carries no version) — same-version edits to a cached plugin are silent no-ops. Add a matching
+Bump `version` in `.claude-plugin/plugin.json` on every release (the marketplace file `.claude-plugin/marketplace.json` in this repo
+carries no version) — same-version edits to a cached plugin are silent no-ops. Add a matching
 entry to [`CHANGELOG.md`](CHANGELOG.md) in the same change.
 
 ## Changelog

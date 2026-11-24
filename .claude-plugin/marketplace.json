@@ -1,0 +1,28 @@
+{
+  "$schema": "https://json.schemastore.org/claude-code-marketplace.json",
+  "name": "atlassian-kit",
+  "owner": {
+    "name": "wasikarn"
+  },
+  "description": "Marketplace for the atlassian-kit plugin (Jira and Confluence toolkit).",
+  "plugins": [
+    {
+      "name": "atlassian-kit",
+      "source": "./",
+      "description": "Atlassian toolkit for Jira and Confluence: ops (acli and REST plan/apply), jira-content and confluence-content skills plus two preview-then-stop agents. Atlassian MCP is the fallback.",
+      "author": {
+        "name": "KoBig"
+      },
+      "category": "productivity",
+      "homepage": "https://github.com/wasikarn/atlassian-kit",
+      "keywords": [
+        "jira",
+        "confluence",
+        "atlassian",
+        "acli",
+        "rest",
+        "adf"
+      ]
+    }
+  ]
+}
