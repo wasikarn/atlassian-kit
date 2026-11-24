@@ -644,6 +644,61 @@ OPERATIONS["version-delete"] = {"product": "jira", "validate": _validate_version
                                 "readback": _readback_version_delete}
 
 
+# --- operation: filter-create (Jira) ----------------------------------------
+# Creates one saved filter. Without --share-project the filter is private to the token's user, so a board
+# built on it is invisible to everyone else.
+
+def _validate_filter_create(flags, pos=()):
+    if pos:
+        raise Fatal(f"filter-create takes no positional arguments: {pos[0]!r}")
+    _check_flags(flags, {"name", "jql", "description", "share-project"}, "filter-create")
+    for f in ("name", "jql", "description", "share-project"):
+        _one(flags, f)
+    if not str(flags.get("name", "")).strip() or not str(flags.get("jql", "")).strip():
+        raise Fatal("usage: filter-create --name <name> --jql <jql> [--description <text>] [--share-project KEY]")
+    if "share-project" in flags and not re.match(r"^[A-Z][A-Z0-9_]+$", str(flags["share-project"])):
+        raise Fatal("--share-project must be a Jira project key")
+    return {k: str(flags[k]) for k in ("name", "jql", "description", "share-project") if k in flags}
+
+
+def _plan_filter_create(get, args):
+    found = get("/rest/api/3/filter/search", {"filterName": args["name"]}).get("values") or []
+    if any(str(f.get("name")) == args["name"] for f in found):
+        raise Fatal(f"a filter named {args['name']!r} already exists (the list is what this account can see)")
+    body = {"name": args["name"], "jql": args["jql"]}
+    if "description" in args:
+        body["description"] = args["description"]
+    base = {"shareProjectId": None}
+    if "share-project" in args:
+        pid = str(get(f"/rest/api/3/project/{args['share-project']}", {}).get("id", ""))
+        if not pid.isdigit():
+            raise Fatal(f"project {args['share-project']} did not expose a numeric id")
+        body["sharePermissions"] = [{"type": "project", "project": {"id": pid}}]
+        base["shareProjectId"] = pid
+    return base, body
+
+
+def _send_filter_create(http, args, base, body_text):
+    return http("POST", "/rest/api/3/filter", body_text.encode())
+
+
+def _readback_filter_create(get, args, base, body_text, result):
+    fid = str(result.get("id", "")) if isinstance(result, dict) else ""
+    if not fid:
+        return False
+    f = get(f"/rest/api/3/filter/{fid}", {"expand": "sharePermissions"})
+    if str(f.get("name")) != args["name"]:
+        return False
+    if base["shareProjectId"] is None:
+        return True
+    return any(str((s.get("project") or {}).get("id")) == base["shareProjectId"] for s in f.get("sharePermissions") or [])
+
+
+OPERATIONS["filter-create"] = {"product": "jira", "validate": _validate_filter_create,
+                               "plan": _plan_filter_create, "send": _send_filter_create,
+                               "readback": _readback_filter_create}
+
+
 # --- operation: issue-delete (Jira, irreversible) -----------------------------
 # Jira has no trash: a deleted issue is gone. The plan lists what goes with it; an issue with
 # sub-tasks is refused unless --delete-subtasks true is given.

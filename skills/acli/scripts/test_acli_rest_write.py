@@ -383,7 +383,7 @@ def test_tokens_never_reach_stdout_or_stderr_on_error_paths():
 
 
 def test_registered_operations_match_the_plan_phases_so_far():
-    assert sorted(rw.OPERATIONS) == ["attachment-upload", "issue-delete", "issue-set", "page-create", "page-delete", "page-fetch", "page-update",
+    assert sorted(rw.OPERATIONS) == ["attachment-upload", "filter-create", "issue-delete", "issue-set", "page-create", "page-delete", "page-fetch", "page-update",
                                      "version-create", "version-delete", "version-edit"], sorted(rw.OPERATIONS)
     for name, op in rw.OPERATIONS.items():
         expected = {"product", "validate", "plan", "send", "readback"} if name != "page-fetch" else {"planOnly", "product", "validate", "plan"}
@@ -1435,6 +1435,7 @@ def _stored_args_for_every_operation():
         "page-create": ({"space": "APPR", "title": "seed", "body-adf": "seed.adf"}, ()),
         "issue-set": ({"key": "APPR-1", "priority": "High"}, ()),
         "issue-delete": ({"key": "APPR-1"}, ()),
+        "filter-create": ({"name": "seed", "jql": "project = APPR"}, ()),
         "version-create": ({"project": "APPR", "name": "seed"}, ()),
         "version-edit": ({"id": "18329", "released": "true", "archived": "false",
                           "release-date": "2030-01-01"}, ()),
@@ -1539,6 +1540,64 @@ def test_issue_delete_applies_and_verifies_by_a_404_readback():
     code, _, err2, _ = run(["apply", str(path), "--confirm", confirm_of(out)], _issue_routes(state) + [tenant_route()])
     assert code == 0, err2
     assert state["deleted"].endswith("/rest/api/3/issue/DEMO-9") and not path.exists()
+
+
+# --- filter-create: one saved filter, optionally shared with a project ---------
+
+def _filter_routes(state):
+    def route(req):
+        u, m = urllib.parse.urlsplit(req.full_url).path, req.get_method()
+        if m == "GET" and u.endswith("/rest/api/3/filter/search"):
+            return json.dumps({"values": state.get("existing", [])})
+        if m == "GET" and u.endswith("/rest/api/3/project/APPR"):
+            return json.dumps({"id": "17951"})
+        if m == "POST" and u.endswith("/rest/api/3/filter"):
+            state["created"] = json.loads(req.data.decode())
+            return json.dumps({"id": "321", "name": state["created"]["name"]})
+        if m == "GET" and u.endswith("/rest/api/3/filter/321"):
+            c = state["created"]
+            return json.dumps({"id": "321", "name": c["name"], "jql": c["jql"],
+                               "sharePermissions": state.get("shares", c.get("sharePermissions", []))})
+        raise AssertionError(f"unexpected {m} {u}")
+    return [(JIRA, route)]
+
+
+def test_filter_create_refuses_bad_arguments_before_any_request():
+    for argv in (["--name", "n"], ["--jql", "j"], ["--name", "n", "--jql", "j", "--share-project", "lower"],
+                 ["--name", "n", "--jql", "j", "--board", "1"]):
+        code, _, err, op = run(["plan", "filter-create", *argv], [tenant_route()])
+        assert code == 1 and op.calls == [], argv
+
+
+def test_filter_create_refuses_a_name_that_already_exists():
+    state = {"existing": [{"name": "CML board"}]}
+    code, _, err, _ = run(["plan", "filter-create", "--name", "CML board", "--jql", "project = APPR"],
+                          _filter_routes(state) + [tenant_route()])
+    assert code == 1 and "already exists" in err and "created" not in state
+
+
+def test_filter_create_posts_the_project_share_and_verifies_by_read_back():
+    state = {}
+    argv = ["plan", "filter-create", "--name", "CML board", "--jql", "project = APPR", "--description", "d",
+            "--share-project", "APPR"]
+    code, out, err, op = run(argv, _filter_routes(state) + [tenant_route()])
+    assert code == 0, err
+    assert "created" not in state
+    code, _, err2, _ = run(["apply", str(request_path(out)), "--confirm", confirm_of(out)],
+                           _filter_routes(state) + [tenant_route()])
+    assert code == 0, err2
+    assert state["created"] == {"name": "CML board", "jql": "project = APPR", "description": "d",
+                                "sharePermissions": [{"type": "project", "project": {"id": "17951"}}]}
+
+
+def test_filter_create_fails_when_the_share_did_not_stick():
+    state = {"shares": []}
+    code, out, err, _ = run(["plan", "filter-create", "--name", "n", "--jql", "project = APPR", "--share-project", "APPR"],
+                            _filter_routes(state) + [tenant_route()])
+    assert code == 0, err
+    code, _, err2, _ = run(["apply", str(request_path(out)), "--confirm", confirm_of(out)],
+                           _filter_routes(state) + [tenant_route()])
+    assert code != 0
 
 
 if __name__ == "__main__":
