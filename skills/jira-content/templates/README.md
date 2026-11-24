@@ -46,7 +46,7 @@ Derived from PROJ-418, 447, 455, 457, 460, 461.
 |---|---|---|
 | Title (`summary`) | always | Symptom first, no `[Area]` bracket; see [title-conventions.md](title-conventions.md) |
 | สรุปปัญหา | always | 1-2 sentences: what broke, where, who it hurts |
-| ขั้นตอน Reproduce | always | Numbered actions, one per line |
+| ขั้นตอน Reproduce | if known | Numbered actions, one per line |
 | ผลที่คาดหวัง | always | What should happen |
 | ผลที่เกิดจริง | always | What happens, including the error or wrong state |
 | ความรุนแรง | recommended | High, Medium or Low, with one line of why |

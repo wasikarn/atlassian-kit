@@ -10,12 +10,12 @@ This file holds only the Bug questions and the Thai description.
 
 ## Step 1: gather
 
-Ask all eleven at once. Done when items 1 to 6 each have an answer from the user. If the user cannot answer one, write `ไม่ทราบ` in that section; a guess is never an answer. Items 7 to 11 may be empty; a section with no answer is deleted.
+Ask all eleven at once. Done when items 1 to 3, 5 and 6 each have an answer from the user. If the user cannot answer one, write `ไม่ทราบ` in that section; a guess is never an answer. Items 4 and 7 to 11 may be empty; a section with no answer is deleted.
 
 1. **Bug summary**: a short Thai title naming the symptom, e.g. "ยอดคงเหลือไม่ถูกหักหลังลูกค้ายืนยันการสั่งซื้อ"
 2. **What happened**: the wrong result as the user saw it (message text, wrong value, status code)
 3. **What should have happened**: the correct result
-4. **How to reproduce**: exact numbered steps
+4. **How to reproduce** (optional): exact numbered steps
 5. **Where and how often**: environment (offer production / uat / sit / staging / dev / local, or any value the user types; the user may skip it), screen or channel, every time or sometimes (and the condition)
 6. **Impact**: who is affected and how badly (money, data loss, blocked workflow, cosmetic)
 7. **Evidence**: screenshot, log line, error code, trace ID, affected record ID
@@ -46,6 +46,8 @@ Write in Thai with this structure. Fill each section from the Step 1 answers onl
 ---
 
 ## 🔁 ขั้นตอนการเกิดปัญหา (Steps to Reproduce)
+
+[ลบทั้ง section ถ้าไม่มีขั้นตอน]
 
 1. [ขั้นตอน]
 2. [ขั้นตอน]

@@ -8,6 +8,10 @@ Pre-`1.0.0`: breaking changes may land in any `0.x` release.
 This file starts at `0.1.18` — releases before that predate the changelog. See
 `git log` for the full history back to `0.1.0`.
 
+## [0.4.11] — 2026-11-24
+
+- Bug: How to reproduce is optional; its section is deleted when the user has no steps. SKILL.md's required list for Bug no longer names repro steps or environment (environment was already skippable).
+
 ## [0.4.10] — 2026-11-24
 
 - Bug template gets its own Test data question and section. Fix: the client-details bullet in `bug.payload.json` landed inside the Acceptance Criteria heading; it now sits under Evidence, beside a Test data bullet.

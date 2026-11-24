@@ -172,7 +172,7 @@ acli jira workitem comment update --key KEY --id <commentId> --body-adf /tmp/not
 
 ## Input Contract
 
-- **Required (Bug):** Thai summary, actual behavior, expected behavior, numbered repro steps, impact, environment.
+- **Required (Bug):** Thai summary, actual behavior, expected behavior, impact.
 - **Required (Story):** Thai summary, business reason, desired behavior, in/out scope, AC.
 - **Required (Task/Epic/Sub-task):** the sections `templates/README.md` § Sections by type marks `always`; Sub-task also needs a parent.
 - **Required (templated comment):** which of the 4 templates, and its fields.
