@@ -8,6 +8,12 @@ Pre-`1.0.0`: breaking changes may land in any `0.x` release.
 This file starts at `0.1.18` — releases before that predate the changelog. See
 `git log` for the full history back to `0.1.0`.
 
+## [0.4.19] — 2026-11-24
+
+- New `skills/jira-content/scripts/test_templates.py` (runs in CI with the other tests): no em dash in ticket and page template text, payload shape, guided/payload section parity for Task, Epic and Sub-task, relative links, and `md2adf.py` flags documented in ops/SKILL.md. It found 12 em dashes left in `confluence-spec.md`, now removed.
+- The optional-fields question and the writing passes now live once in SKILL.md instead of in all five guided files; their headers link `writing-rules.md` directly.
+- ops/SKILL.md: delete linked tickets one at a time.
+
 ## [0.4.18] — 2026-11-24
 
 - New `templates/intake.md` and `jira-content/SKILL.md` Step 1b: a read-only duplicate search (`summary ~`) before every create, a four-way choice when it finds a match (update, comment, create and link, create), an update flow that edits one section at a time, and a preview for every create and update.

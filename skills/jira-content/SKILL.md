@@ -31,7 +31,7 @@ Create or edit the **content** of a Jira Bug/Story/Task/Epic/Sub-task, or a temp
 cat "${CLAUDE_SKILL_DIR}/templates/bug.md"   # or story.md, task.md, epic.md, subtask.md, comments.md
 ```
 
-Ask all gather questions **at once, not one by one**. If the user already provided enough, skip to Step 2.
+Ask all gather questions **at once, not one by one**. If the user already provided enough, skip to Step 2. Ask the optional fields in [`templates/fields.md`](templates/fields.md) in the same message; a field the user leaves out stays unset.
 
 ## Step 1b — Check for existing tickets
 

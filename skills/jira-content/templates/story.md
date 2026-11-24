@@ -4,7 +4,7 @@ Loaded by `atlassian-kit:jira-content` Steps 1 and 2. The shared metadata table,
 
 - AC format, register and coverage, including the Story-only additions: [`acceptance-criteria.md`](../../../templates/acceptance-criteria.md)
 - Title: [`title-conventions.md`](title-conventions.md)
-- Wording of the ticket text: [`README.md`](README.md) § Writing rules
+- Wording of the ticket text: [`writing-rules.md`](../../../templates/writing-rules.md)
 
 This file holds only the Story questions and the Thai description.
 
@@ -27,11 +27,9 @@ Sub-tasks and dependencies do not go in the description. After the story exists,
 
 If the user's first message already answers these, go straight to Step 2.
 
-Ask the optional fields in [`fields.md`](fields.md) in the same message (priority, assignee, due date, start date, components, fix versions, team, sprint). A field the user leaves out stays unset.
-
 ## Step 2: write the description
 
-Write in Thai with this structure. Fill each section from the Step 1 answers only, then run the passes in [`writing-rules.md`](../../../templates/writing-rules.md). Done when no `[ ]` placeholder is left, every AC has all three bullets, and there are at least 3 ACs (happy path, error or edge, regression or permission).
+Write in Thai with this structure. Fill each section from the Step 1 answers only. Done when no `[ ]` placeholder is left, every AC has all three bullets, and there are at least 3 ACs (happy path, error or edge, regression or permission).
 
 ```
 ## 🎯 เหตุผลทางธุรกิจ (ทำไมต้องทำ)

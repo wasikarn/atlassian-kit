@@ -3,7 +3,7 @@
 Loaded by `atlassian-kit:jira-content` Steps 1 and 2. The shared metadata table, preview gate and create commands live in `SKILL.md`. Other rules are defined once, elsewhere:
 
 - Title: [`title-conventions.md`](title-conventions.md)
-- Wording of the ticket text: [`README.md`](README.md) § Writing rules
+- Wording of the ticket text: [`writing-rules.md`](../../../templates/writing-rules.md)
 
 The section names below match `epic.payload.json`, so a ticket written from this file and one filled straight into the payload carry the same sections. Use this file when the user has not yet given the content; use the payload directly when the content is already complete.
 
@@ -22,11 +22,9 @@ An epic is work estimated in weeks or more. If the user describes work of hours 
 
 If the user's first message already answers these, go straight to Step 2.
 
-Ask the optional fields in [`fields.md`](fields.md) in the same message (priority, assignee, due date, start date, components, fix versions, team, sprint). A field the user leaves out stays unset.
-
 ## Step 2: write the description
 
-Write in Thai with this structure. Fill each section from the Step 1 answers only, then run the passes in [`writing-rules.md`](../../../templates/writing-rules.md). Done when no `< >` placeholder is left and every Success Criteria line can be answered yes or no.
+Write in Thai with this structure. Fill each section from the Step 1 answers only. Done when no `< >` placeholder is left and every Success Criteria line can be answered yes or no.
 
 ```
 # Goal

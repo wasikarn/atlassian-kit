@@ -4,7 +4,7 @@ Loaded by `atlassian-kit:jira-content` Steps 1 and 2. The shared metadata table,
 
 - AC format, register and coverage: [`acceptance-criteria.md`](../../../templates/acceptance-criteria.md)
 - Title: [`title-conventions.md`](title-conventions.md)
-- Wording of the ticket text: [`README.md`](README.md) § Writing rules
+- Wording of the ticket text: [`writing-rules.md`](../../../templates/writing-rules.md)
 
 The section names below match `task.payload.json`, so a ticket written from this file and one filled straight into the payload carry the same sections. Use this file when the user has not yet given the content; use the payload directly when the content is already complete.
 
@@ -24,11 +24,9 @@ A dependency does not go in the description. After the task exists, create it as
 
 If the user's first message already answers these, go straight to Step 2.
 
-Ask the optional fields in [`fields.md`](fields.md) in the same message (priority, assignee, due date, start date, components, fix versions, team, sprint). A field the user leaves out stays unset.
-
 ## Step 2: write the description
 
-Write in Thai with this structure. Fill each section from the Step 1 answers only, then run the passes in [`writing-rules.md`](../../../templates/writing-rules.md). Done when no `< >` placeholder is left, each AC has all three bullets, and there are at least 2 ACs (done-state, error or permission).
+Write in Thai with this structure. Fill each section from the Step 1 answers only. Done when no `< >` placeholder is left, each AC has all three bullets, and there are at least 2 ACs (done-state, error or permission).
 
 ```
 # Context
