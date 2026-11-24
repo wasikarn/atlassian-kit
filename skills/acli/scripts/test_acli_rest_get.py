@@ -557,6 +557,20 @@ def test_api_sends_only_get_and_no_body():
     assert all(r.get_method() == "GET" and r.data is None for r in seen)
 
 
+def test_api_allows_only_the_agile_board_configuration_path():
+    body = json.dumps({"columnConfig": {"columns": []}})
+    code, out, err, op = run_main(["api", "jira", "/rest/agile/1.0/board/10103/configuration"],
+                                  [(f"https://{HOST}/_edge/tenant_info", lambda r: json.dumps({"cloudId": CID})), (f"{JIRA}/rest/agile/1.0/board/10103/configuration", lambda r: body)])
+    assert code == 0, err
+    for path in ("/rest/agile/1.0/board/10103/sprint", "/rest/agile/1.0/board/abc/configuration",
+                 "/rest/agile/1.0/board/10103/configuration/../x", "/rest/agile/1.0/board/10103/configuration?x=1.2"):
+        code, _, err, op = run_main(["api", "jira", path], [])
+        assert code == 1 and "not an api path" in err, (path, err)
+        assert op.calls == [], path
+    code, _, err, op = run_main(["api", "confluence", "/rest/agile/1.0/board/10103/configuration"], [])
+    assert code == 1 and op.calls == [], err
+
+
 if __name__ == "__main__":
     failed = 0
     tests = [(n, f) for n, f in sorted(globals().items()) if n.startswith("test_") and callable(f)]
