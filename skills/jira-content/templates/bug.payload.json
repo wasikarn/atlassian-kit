@@ -292,18 +292,20 @@
                 ]
               }
             ]
-          }
-        ]
-      },
-      {
-        "type": "heading",
-        "attrs": {
-          "level": 2
-        },
-        "content": [
+          },
           {
-            "type": "text",
-            "text": "Acceptance Criteria"
+            "type": "listItem",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "Test data: account, record ID, ข้อมูลที่ใช้ทดสอบ"
+                  }
+                ]
+              }
+            ]
           },
           {
             "type": "listItem",
@@ -318,6 +320,18 @@
                 ]
               }
             ]
+          }
+        ]
+      },
+      {
+        "type": "heading",
+        "attrs": {
+          "level": 2
+        },
+        "content": [
+          {
+            "type": "text",
+            "text": "Acceptance Criteria"
           }
         ]
       },

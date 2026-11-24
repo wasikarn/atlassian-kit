@@ -1,7 +1,7 @@
 {
   "$schema": "https://json.schemastore.org/claude-code-plugin-manifest.json",
   "name": "atlassian-kit",
-  "version": "0.4.9",
+  "version": "0.4.10",
   "description": "Atlassian toolkit for Jira and Confluence: an ops skill (acli CLI, REST plan/apply writes for versions, filters, boards, Confluence pages and attachments, ADF↔markdown conversion) paired with jira-content (Bug/Story/Task/Epic/Sub-task + comments) and confluence-content (Spec/PRD pages), each owning its product's canonical templates, plus two preview-then-stop dispatchable agents (jira-expert, confluence-expert) that wrap them for multi-step work. Atlassian MCP is the fallback, not the default.",
   "author": {
     "name": "KoBig",

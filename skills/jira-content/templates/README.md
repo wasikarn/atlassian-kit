@@ -51,7 +51,8 @@ Derived from PROJ-418, 447, 455, 457, 460, 461.
 | ผลที่เกิดจริง | always | What happens, including the error or wrong state |
 | ความรุนแรง | recommended | High, Medium or Low, with one line of why |
 | ผลกระทบ | always | Who is affected and how badly; its own section, not a clause inside ความรุนแรง |
-| หลักฐาน | if available | Account, order or ID; screenshot or log; client details (browser, OS, device, app version, URL). Environment and version go in the native Environment and Affects versions fields, not here |
+| หลักฐาน | if available | Screenshot, log, error code, trace ID; client details (browser, OS, device, app version, URL). Environment and version go in the native Environment and Affects versions fields, not here |
+| Test data | if available | Account, record ID or the data that triggers the bug |
 | วิธีเลี่ยงชั่วคราว | if known | The way around the bug, or "none" |
 | Regression | if known | Last version or date it worked, and what changed since |
 | Acceptance Criteria | always | See [acceptance-criteria.md](../../../templates/acceptance-criteria.md) |

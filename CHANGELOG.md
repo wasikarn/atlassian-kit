@@ -8,6 +8,10 @@ Pre-`1.0.0`: breaking changes may land in any `0.x` release.
 This file starts at `0.1.18` — releases before that predate the changelog. See
 `git log` for the full history back to `0.1.0`.
 
+## [0.4.10] — 2026-11-24
+
+- Bug template gets its own Test data question and section. Fix: the client-details bullet in `bug.payload.json` landed inside the Acceptance Criteria heading; it now sits under Evidence, beside a Test data bullet.
+
 ## [0.4.9] — 2026-11-24
 
 - Bug template asks for Workaround, Regression (last working version) and client details (browser, OS, device, app version, URL); test account or data joins Evidence. Each new section is deleted when the user has no answer. Bug payload gains the same two sections and a client bullet.
