@@ -8,6 +8,11 @@ Pre-`1.0.0`: breaking changes may land in any `0.x` release.
 This file starts at `0.1.18` — releases before that predate the changelog. See
 `git log` for the full history back to `0.1.0`.
 
+## [0.4.37] — 2026-11-25
+
+### Fixed
+- README install: says the plugin installs disabled, gives `claude plugin enable atlassian-kit@atlassian-kit` and `claude plugin list` to check, and points to `/atlassian-kit:setup`. Without enabling, no skill (including setup) loads.
+
 ## [0.4.36] — 2026-11-25
 
 ### Fixed

@@ -80,8 +80,13 @@ duplicating credentials and rewriting every MCP tool literal for no functional g
 /plugin install atlassian-kit@atlassian-kit
 ```
 
-Ships `defaultEnabled: false` — add `"atlassian-kit@atlassian-kit": true` to your Claude Code
-`settings.json` after install, then restart.
+Ships `defaultEnabled: false`, so the install leaves it disabled and none of its skills load. Enable it, then restart:
+
+```
+claude plugin enable atlassian-kit@atlassian-kit
+```
+
+(or add `"atlassian-kit@atlassian-kit": true` to `enabledPlugins` in your Claude Code `settings.json`). Check with `claude plugin list`: the status must read enabled. Then type `/atlassian-kit:setup` for the first-time credentials setup.
 
 ## Versioning
 

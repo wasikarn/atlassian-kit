@@ -12,7 +12,7 @@ Run the steps in order. Stop at the first FAIL and fix it before the next step.
 - Install acli from the official Atlassian download (macOS: Homebrew is optional; use the official installer if it is missing).
 - Install Python 3 (`python3` on macOS; `py` or `python` on Windows; use that launcher wherever a command below says `python3`).
 - Install the official Atlassian plugin from the Claude marketplace. The Atlassian MCP fallback and the `confluence-content` page create/update need it.
-- Enable this plugin. The hook that blocks unsafe acli writes runs only while the plugin is enabled.
+- Enable this plugin: `claude plugin enable atlassian-kit@atlassian-kit`, then restart. A plugin that is installed but disabled loads no skills. The hook that blocks unsafe acli writes runs only while the plugin is enabled.
 
 ## 2. Create an API token (done by you, in the browser)
 
