@@ -31,7 +31,7 @@ import sys
 # acli as a word or the last part of a path; not inside jira-acli, skills/acli/, acli-ls.py.
 CAND = re.compile(r"(?<![\w.-])acli(?![\w./-])")
 # The four wrappers that write (both skills ship copies under these names).
-WRAP = re.compile(r"acli-(edit|new|set-desc|assign)\.sh|acli-reformat\.py")
+WRAP = re.compile(r"acli-(edit|new|set-desc|assign)\.sh|acli-reformat\.py|acli-issue-set-batch\.py")
 # The skill's direct-REST scripts: neither matches CAND (hyphen-joined), so name them.
 # rest-get is GET-only by construction; rest-write mutates.
 REST = re.compile(r"acli-rest-(get|write)\.py")
@@ -166,19 +166,26 @@ def _split_pipeline(t):
     return segs
 
 
+def _is_rest_get(toks):
+    """True when the segment runs acli-rest-get.py itself, bare or under python."""
+    if os.path.basename(toks[0]) in ("python", "python3"):
+        toks = [t for t in toks[1:] if not t.startswith("-")]
+    return bool(toks) and os.path.basename(toks[0]) == "acli-rest-get.py"
+
+
 def _read_safe(cmd):
     """True only for acli reads in the narrow grammar; cmd is already lowercased."""
     if WRAP.search(cmd) or RESTW.search(cmd):
         return False
-    if REST.search(cmd):  # rest-get is GET-only by construction
-        return True
     segs = _split_pipeline(cmd)
     if segs is None:
         return False
     for seg in segs:
+        toks = shlex.split(seg, posix=True) if seg.strip() else []
+        if toks and _is_rest_get(toks):  # rest-get is GET-only by construction
+            continue
         if not CAND.search(seg):
             continue
-        toks = shlex.split(seg, posix=True)
         if not toks or os.path.basename(toks[0]) != "acli":
             return False
         pos = []

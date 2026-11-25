@@ -107,3 +107,10 @@ deny	rest-write-jira-call-apply	python3 skills/ops/scripts/acli-rest-write.py ap
 allow	rest-get-confluence-ops	python3 skills/ops/scripts/acli-rest-get.py confluence-ops label
 deny	rest-write-confluence-call-plan	python3 skills/ops/scripts/acli-rest-write.py plan confluence-call --op createFolder --body '{}'
 deny	rest-write-confluence-v1-call-plan	python3 skills/ops/scripts/acli-rest-write.py plan confluence-v1-call --op createSpace --body '{}'
+deny	batch	python3 skills/ops/scripts/acli-issue-set-batch.py --yes APPR-1 -- --environment-adf f.json
+deny	batch-preview	python3 skills/ops/scripts/acli-issue-set-batch.py APPR-1 -- --priority High
+deny	rest-get-then-delete	python3 skills/ops/scripts/acli-rest-get.py transitions APPR-1; acli jira workitem delete --key APPR-1 --yes
+deny	rest-get-and-delete	python3 skills/ops/scripts/acli-rest-get.py transitions APPR-1 && acli jira workitem delete --key APPR-1 --yes
+deny	rest-get-pipe-delete	python3 skills/ops/scripts/acli-rest-get.py transitions APPR-1 | acli jira workitem delete --key APPR-1 --yes
+allow	rest-get-pipe-head	python3 skills/ops/scripts/acli-rest-get.py transitions APPR-1 | head -5
+allow	rest-get-python-flag	python3 -I skills/ops/scripts/acli-rest-get.py transitions APPR-1

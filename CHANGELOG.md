@@ -8,6 +8,17 @@ Pre-`1.0.0`: breaking changes may land in any `0.x` release.
 This file starts at `0.1.18` — releases before that predate the changelog. See
 `git log` for the full history back to `0.1.0`.
 
+## [0.4.25] — 2026-11-25
+
+### Fixed
+
+- `acli-guard.py` denies `acli-issue-set-batch.py` for subagents and prompts in the main thread (it was an unguarded write path).
+- `acli-guard.py`: a command that mentions `acli-rest-get.py` is no longer read-safe as a whole; every pipeline segment is judged, so `acli-rest-get.py ...; acli jira workitem delete` is denied.
+- `acli-reformat.py` keeps text marks (bold, link) in paragraphs, list items and Environment bullets.
+- `acli-reformat.py --apply` on a ticket that already has headings sets the Environment field from its `Env:` bullet when it differs, so a failed Environment write can be retried.
+- `acli-reformat.py` reads `Env:` only from the Environment section.
+- `acli-reformat.py` keeps the marks of a single-node heading line (a linked "Environment"); a heading line with mixed marks stays a paragraph.
+
 ## [0.4.24] — 2026-11-24
 
 ### Changed
