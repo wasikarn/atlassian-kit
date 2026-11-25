@@ -151,17 +151,18 @@ assert rc == 0 and calls == [], calls  # preview never writes
 rc = run_main({"description": headed}, ["--apply"], env_rc=3)
 assert rc == 3
 
-# 10. a marked heading line keeps its marks; a mixed-marks line is not turned into a heading
+# 10. a single marked heading line keeps its marks
 d, found = m.reformat(doc(rich_para([T("Environment", LINK)], [T("Env: sit")], [T("Test Data")], [T("a")])))
 assert found == ["Environment", "Test Data"] and d["content"][0]["content"] == [T("Environment", LINK)], d["content"][0]
-d, found = m.reformat(doc(rich_para([T("Environment")], [T("Env: sit")], [T("Test "), T("Data", BOLD)], [T("a")],
-                                    [T("Actual Result")], [T("- x")])))
-assert found == ["Environment", "Test Data", "Actual Result"], found
-assert d["content"][2] == {"type": "heading", "attrs": {"level": 2}, "content": [T("Test Data")]}, d["content"][2]
 
-# 11. an Env bullet under a mixed-marks Test Data heading is not the Environment value
-d, _ = m.reformat(doc(rich_para([T("Environment")], [T("Device: phone")], [T("Test "), T("Data", BOLD)],
-                                [T("Env: prod")], [T("Actual Result")], [T("- failure")])))
-assert m.env_value(d) is None
+# 11. a section line built from several marked nodes cannot keep its formatting: nothing is written,
+# so its Env line is never read as the Environment value
+for mixed in ([T("Test "), T("Data", BOLD)], [T("Test "), T("Data", LINK)]):
+    d, why = m.reformat(doc(rich_para([T("Environment")], [T("Device: phone")], mixed, [T("Env: prod")],
+                                      [T("Actual Result")], [T("- failure")])))
+    assert d is None and why.startswith("section line has mixed formatting"), (d, why)
+# unmarked multi-node lines are still headings
+d, found = m.reformat(doc(rich_para([T("Test "), T("Data")], [T("a")], [T("Actual Result")], [T("- x")])))
+assert found == ["Test Data", "Actual Result"], found
 
 print("ok: acli-reformat")

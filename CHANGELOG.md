@@ -8,6 +8,12 @@ Pre-`1.0.0`: breaking changes may land in any `0.x` release.
 This file starts at `0.1.18` — releases before that predate the changelog. See
 `git log` for the full history back to `0.1.0`.
 
+## [0.4.27] — 2026-11-25
+
+### Fixed
+
+- `acli-reformat.py`: a section line built from several marked nodes (for example "Test **Data**") is no longer rewritten without its formatting; the script writes nothing and names the line to fix by hand.
+
 ## [0.4.26] — 2026-11-25
 
 ### Fixed

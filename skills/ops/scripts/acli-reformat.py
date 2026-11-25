@@ -120,12 +120,14 @@ def reformat(doc):
         if not s:
             state["list"] = None
         elif _key(s) in HEADINGS:
+            if len(val) > 1 and any(n.get("marks") for n in val):
+                # a heading rebuilt from several marked nodes would lose their formatting: write nothing
+                return None, "section line has mixed formatting, fix it by hand: " + s
             state["list"] = None
             state["section"] = HEADINGS[_key(s)]
             found.append(state["section"])
-            # a single marked node (a linked "Environment") keeps its marks; a mixed-marks line still ends the
-            # previous section, so it becomes a plain canonical heading
-            node = dict(val[0], text=state["section"]) if len(val) == 1 else {"type": "text", "text": state["section"]}
+            # a single marked node (a linked "Environment") keeps its marks on the canonical name
+            node = dict(val[0], text=state["section"]) if val else {"type": "text", "text": state["section"]}
             out.append({"type": "heading", "attrs": {"level": 2}, "content": [node]})
         elif NUM.match(s) and _after(val, NUM):
             add_item("orderedList", _after(val, NUM))
