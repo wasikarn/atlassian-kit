@@ -8,7 +8,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import doctor  # noqa: E402
 
-GOOD = "ACLI_SITE=s.atlassian.net\nACLI_EMAIL=u@e.com\nACLI_JIRA_TOKEN=j\nACLI_CONFLUENCE_TOKEN=c\n"
+GOOD = "ACLI_SITE=s.atlassian.net\nACLI_EMAIL=u@e.com\nACLI_JIRA_TOKEN=j\nACLI_CONFLUENCE_TOKEN=c\nACLI_LOGIN_TOKEN=l\n"
 
 
 class Proc:
@@ -132,7 +132,9 @@ def test_login_failure_is_reported_and_blocks_the_smoke():
 def test_smoke_failure_shows_the_last_message_line():
     res = doctor.check_smoke(lambda cmd: Proc(1, stderr="noise\nFATAL: scope missing\n"))
     assert "FATAL: scope missing" in res[0][2] and "noise" not in res[0][2]
-    assert "no message" in doctor.check_smoke(lambda cmd: Proc(1))[0][2]
+    assert "no FATAL message" in doctor.check_smoke(lambda cmd: Proc(1))[0][2]
+    leaked = doctor.check_smoke(lambda cmd: Proc(1, stderr="Authorization: Bearer SECRET123\n"))[0][2]
+    assert "SECRET123" not in leaked
 
 
 if __name__ == "__main__":

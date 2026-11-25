@@ -15,7 +15,7 @@ from pathlib import Path
 
 META_NAME = "atlassian-kit-meta.json"  # written by setup_credentials.py
 WARN_DAYS = 30
-KEYS = ("ACLI_SITE", "ACLI_EMAIL", "ACLI_JIRA_TOKEN", "ACLI_CONFLUENCE_TOKEN")
+KEYS = ("ACLI_SITE", "ACLI_EMAIL", "ACLI_JIRA_TOKEN", "ACLI_CONFLUENCE_TOKEN", "ACLI_LOGIN_TOKEN")
 SCRIPTS = Path(__file__).resolve().parents[2] / "ops" / "scripts"
 SMOKE = (
     ("Jira read smoke", ["api", "jira", "/rest/api/3/myself"]),
@@ -36,7 +36,7 @@ def check_env_file(home):
     found = {line.split("=", 1)[0] for line in path.read_text(encoding="utf-8").splitlines() if "=" in line}
     missing = [k for k in KEYS if k not in found]
     results = [("credentials keys", "FAIL" if missing else "PASS",
-                "missing: " + ", ".join(missing) if missing else "all four keys present (values not shown)")]
+                "missing: " + ", ".join(missing) if missing else "all five keys present (values not shown)")]
     if os.name == "nt":
         results.append(("credentials permissions", "SKIP", "Windows ACL not checked by doctor; confirm with icacls"))
     else:
@@ -69,12 +69,13 @@ def check_expiry(home, today=None):
 def check_login(runner):
     ok = runner(["acli", "jira", "auth", "status"]).returncode == 0
     return ("acli login", "PASS" if ok else "FAIL",
-            "logged in" if ok else "not logged in; run `acli jira auth login` with the same site, email and Jira token")
+            "logged in" if ok else "not logged in; run `acli jira auth login` with your site, email and the unscoped login token (ACLI_LOGIN_TOKEN)")
 
 
 def _reason(proc):
-    lines = [l.strip() for l in ((proc.stderr or "") + (proc.stdout or "")).splitlines() if l.strip()]
-    return lines[-1][:200] if lines else "no message"
+    # only our own FATAL lines are shown; any other output could carry server text or secrets
+    lines = [l.strip() for l in ((proc.stderr or "") + (proc.stdout or "")).splitlines() if l.strip().startswith("FATAL:")]
+    return lines[-1][:200] if lines else "no FATAL message; run acli-rest-get.py by hand to see the error"
 
 
 def check_smoke(runner):

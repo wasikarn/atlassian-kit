@@ -16,7 +16,7 @@ from datetime import date
 from pathlib import Path
 
 META_NAME = "atlassian-kit-meta.json"  # non-secret expiry dates; doctor.py reads the same name
-KEYS = ("ACLI_SITE", "ACLI_EMAIL", "ACLI_JIRA_TOKEN", "ACLI_CONFLUENCE_TOKEN")
+KEYS = ("ACLI_SITE", "ACLI_EMAIL", "ACLI_JIRA_TOKEN", "ACLI_CONFLUENCE_TOKEN", "ACLI_LOGIN_TOKEN")
 SITE_RE = re.compile(r"^[a-z0-9-]+\.atlassian\.net$")
 EMAIL_RE = re.compile(r"^[^\s@]+@[^\s@]+\.[^\s@]+$")
 
@@ -100,8 +100,9 @@ def ask_values(input_fn=input, secret_fn=getpass.getpass):
     email = check_email(input_fn("Atlassian account email: "))
     jira = check_token(secret_fn("Jira API token (hidden): "))
     confluence = check_token(secret_fn("Confluence API token (hidden): "))
-    return {"ACLI_SITE": site, "ACLI_EMAIL": email,
-            "ACLI_JIRA_TOKEN": jira, "ACLI_CONFLUENCE_TOKEN": confluence}
+    login = check_token(secret_fn("acli login token, unscoped (hidden): "))
+    return {"ACLI_SITE": site, "ACLI_EMAIL": email, "ACLI_JIRA_TOKEN": jira,
+            "ACLI_CONFLUENCE_TOKEN": confluence, "ACLI_LOGIN_TOKEN": login}
 
 
 def dry_run(home=None, which=shutil.which):

@@ -8,6 +8,13 @@ Pre-`1.0.0`: breaking changes may land in any `0.x` release.
 This file starts at `0.1.18` — releases before that predate the changelog. See
 `git log` for the full history back to `0.1.0`.
 
+## [0.4.36] — 2026-11-25
+
+### Fixed
+- setup: asks for the unscoped acli login token (hidden prompt) and writes it as `ACLI_LOGIN_TOKEN`, the fifth key; doctor requires it. The 0.4.35 login hint pointed at the Jira scoped token, and replacing the file dropped an existing `ACLI_LOGIN_TOKEN`.
+- setup: SKILL.md commands use `${CLAUDE_SKILL_DIR}` so they work from any folder.
+- doctor: a failed smoke shows only our own `FATAL:` line, never other output.
+
 ## [0.4.35] — 2026-11-25
 
 ### Fixed
