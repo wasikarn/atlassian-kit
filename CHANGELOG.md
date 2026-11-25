@@ -8,6 +8,12 @@ Pre-`1.0.0`: breaking changes may land in any `0.x` release.
 This file starts at `0.1.18` — releases before that predate the changelog. See
 `git log` for the full history back to `0.1.0`.
 
+## [0.4.26] — 2026-11-25
+
+### Fixed
+
+- `acli-reformat.py`: a section line with mixed marks (for example "Test **Data**") is now a plain heading instead of staying a paragraph, so it ends the previous section and an `Env:` line under it no longer sets the Environment field.
+
 ## [0.4.25] — 2026-11-25
 
 ### Fixed
@@ -17,7 +23,7 @@ This file starts at `0.1.18` — releases before that predate the changelog. See
 - `acli-reformat.py` keeps text marks (bold, link) in paragraphs, list items and Environment bullets.
 - `acli-reformat.py --apply` on a ticket that already has headings sets the Environment field from its `Env:` bullet when it differs, so a failed Environment write can be retried.
 - `acli-reformat.py` reads `Env:` only from the Environment section.
-- `acli-reformat.py` keeps the marks of a single-node heading line (a linked "Environment"); a heading line with mixed marks stays a paragraph.
+- `acli-reformat.py` keeps the marks of a single-node heading line (a linked "Environment").
 
 ## [0.4.24] — 2026-11-24
 

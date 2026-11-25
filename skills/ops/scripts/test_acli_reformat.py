@@ -156,7 +156,12 @@ d, found = m.reformat(doc(rich_para([T("Environment", LINK)], [T("Env: sit")], [
 assert found == ["Environment", "Test Data"] and d["content"][0]["content"] == [T("Environment", LINK)], d["content"][0]
 d, found = m.reformat(doc(rich_para([T("Environment")], [T("Env: sit")], [T("Test "), T("Data", BOLD)], [T("a")],
                                     [T("Actual Result")], [T("- x")])))
-assert found == ["Environment", "Actual Result"], found
-assert any(n["type"] == "paragraph" and n["content"] == [T("Test "), T("Data", BOLD)] for n in d["content"])
+assert found == ["Environment", "Test Data", "Actual Result"], found
+assert d["content"][2] == {"type": "heading", "attrs": {"level": 2}, "content": [T("Test Data")]}, d["content"][2]
+
+# 11. an Env bullet under a mixed-marks Test Data heading is not the Environment value
+d, _ = m.reformat(doc(rich_para([T("Environment")], [T("Device: phone")], [T("Test "), T("Data", BOLD)],
+                                [T("Env: prod")], [T("Actual Result")], [T("- failure")])))
+assert m.env_value(d) is None
 
 print("ok: acli-reformat")
