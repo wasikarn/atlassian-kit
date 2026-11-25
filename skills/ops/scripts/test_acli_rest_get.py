@@ -669,6 +669,14 @@ def test_api_allows_the_board_reads_but_nothing_that_writes_and_no_greenhopper()
         assert code == 1 and "not an api path" in err and op.calls == [], (path, err)
 
 
+def test_two_product_keys_fill_the_per_operation_token_keys_and_a_specific_key_wins():
+    env = write_env(f"ACLI_JIRA_TOKEN=J\nACLI_CONFLUENCE_TOKEN=C\nACLI_REST_WRITE_CONFLUENCE_FILE_TOKEN=F\n")
+    got = rg.read_env_file(env)
+    assert [got[k] for k in ("ACLI_REST_READ_TOKEN", "ACLI_REST_WRITE_JIRA_TOKEN")] == ["J", "J"]
+    assert [got[k] for k in ("ACLI_REST_WRITE_CONFLUENCE_TOKEN", "ACLI_REST_WRITE_CONFLUENCE_V1_TOKEN")] == ["C", "C"]
+    assert got["ACLI_REST_WRITE_CONFLUENCE_FILE_TOKEN"] == "F"
+
+
 if __name__ == "__main__":
     failed = 0
     tests = [(n, f) for n, f in sorted(globals().items()) if n.startswith("test_") and callable(f)]

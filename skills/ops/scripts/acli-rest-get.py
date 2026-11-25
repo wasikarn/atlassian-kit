@@ -20,6 +20,9 @@ and for `api confluence` the write script's own trio (its token is the granular 
   ACLI_REST_WRITE_EMAIL=<email>
   ACLI_REST_WRITE_CONFLUENCE_TOKEN=<granular API token>
 
+One key per product also works: ACLI_JIRA_TOKEN fills ACLI_REST_READ_TOKEN and ACLI_REST_WRITE_JIRA_TOKEN,
+ACLI_CONFLUENCE_TOKEN fills the three Confluence token keys; a key set explicitly still wins.
+
 The token goes only into the Authorization header sent to api.atlassian.com. It is never printed.
 api PATHS are refused unless they are pure /rest/api/3/… or /wiki/api/v2/… segments, or one of the jira board
 reads in AGILE_READ_RES (matched exactly). Other paths have no dots, so no traversal; params may use ?, &, =, %, and ,.

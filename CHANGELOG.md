@@ -8,6 +8,14 @@ Pre-`1.0.0`: breaking changes may land in any `0.x` release.
 This file starts at `0.1.18` — releases before that predate the changelog. See
 `git log` for the full history back to `0.1.0`.
 
+## [0.4.29] — 2026-11-25
+
+### Added
+- `~/.claude/atlassian.env` needs only two token keys: `ACLI_JIRA_TOKEN` and `ACLI_CONFLUENCE_TOKEN`. They fill
+  `ACLI_REST_READ_TOKEN`, `ACLI_REST_WRITE_JIRA_TOKEN`, `ACLI_REST_WRITE_CONFLUENCE_TOKEN`,
+  `ACLI_REST_WRITE_CONFLUENCE_V1_TOKEN` and `ACLI_REST_WRITE_CONFLUENCE_FILE_TOKEN` when the file does not set them;
+  a key named explicitly still wins, so old files keep working.
+
 ## [0.4.28] — 2026-11-25
 
 ### Removed

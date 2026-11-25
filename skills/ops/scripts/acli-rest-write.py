@@ -19,7 +19,8 @@ rejected by the server (4xx — the server's error body is printed); 3 sent but 
 or connection error once the write started, a 5xx, or a read-back that fails or does not match.
 Do not re-run `apply` at 3 before checking.
 
-Credentials come from a mode-600 env file: ACLI_REST_WRITE_SITE, ACLI_REST_WRITE_EMAIL,
+Credentials come from a mode-600 env file (ACLI_JIRA_TOKEN and ACLI_CONFLUENCE_TOKEN set every token key of
+their product that the file does not name itself): ACLI_REST_WRITE_SITE, ACLI_REST_WRITE_EMAIL,
 ACLI_REST_WRITE_JIRA_TOKEN, ACLI_REST_WRITE_CONFLUENCE_TOKEN (plus ACLI_REST_WRITE_CONFLUENCE_FILE_TOKEN
 for attachment-upload: the granular Confluence token or a classic token with only write:confluence-file). The default file is ~/.claude/atlassian.env
 and must agree with `acli jira auth status`. --env-file names an alternate target (a test site); it must

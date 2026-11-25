@@ -111,6 +111,13 @@ def cloud_id(host, opener):
     return cid
 
 
+PRODUCT_TOKEN_KEYS = {
+    "ACLI_JIRA_TOKEN": ("ACLI_REST_READ_TOKEN", "ACLI_REST_WRITE_JIRA_TOKEN"),
+    "ACLI_CONFLUENCE_TOKEN": ("ACLI_REST_WRITE_CONFLUENCE_TOKEN", "ACLI_REST_WRITE_CONFLUENCE_V1_TOKEN",
+                              "ACLI_REST_WRITE_CONFLUENCE_FILE_TOKEN"),
+}
+
+
 def read_env_file(env_file):
     """Return {KEY: value} from a KEY=value file. Refuses a file readable by group or others."""
     try:
@@ -120,4 +127,9 @@ def read_env_file(env_file):
     except FileNotFoundError:
         raise Fatal(f"token file {env_file} not found (see the script docstring)") from None
     pairs = re.findall(r"^\s*(?:export\s+)?([A-Z_][A-Z0-9_]*)=(.*?)\s*$", text, re.M)
-    return {k: v[1:-1] if len(v) > 1 and v[0] == v[-1] and v[0] in "\"'" else v for k, v in pairs}
+    values = {k: v[1:-1] if len(v) > 1 and v[0] == v[-1] and v[0] in "\"'" else v for k, v in pairs}
+    for product_key, keys in PRODUCT_TOKEN_KEYS.items():  # one key per product; a per-operation key still wins
+        for key in keys:
+            if product_key in values:
+                values.setdefault(key, values[product_key])
+    return values
