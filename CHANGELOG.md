@@ -8,6 +8,14 @@ Pre-`1.0.0`: breaking changes may land in any `0.x` release.
 This file starts at `0.1.18` — releases before that predate the changelog. See
 `git log` for the full history back to `0.1.0`.
 
+## [0.4.35] — 2026-11-25
+
+### Fixed
+- setup: SKILL.md uses paths relative to the skill folder (not the user's project), says which launcher to use on Windows, adds the `acli jira auth login` step and the official Atlassian plugin prerequisite.
+- doctor: checks `acli login` before the read smoke, and shows the last message line of a failed smoke instead of "see the message above".
+- setup_credentials.py: asks whether to replace the existing file before it asks for tokens.
+- Known open: doctor skips the Windows ACL check, and the shared reader still tests POSIX mode bits; unverified on Windows.
+
 ## [0.4.34] — 2026-11-25
 
 ### Added

@@ -129,6 +129,24 @@ def test_expiry_must_be_a_real_future_date_and_is_saved_without_secrets():
         assert json.loads(p.read_text()) == {"jira_expires": "2027-04-30", "confluence_expires": "2027-05-01"}
 
 
+def test_declining_replace_asks_before_any_token_is_typed():
+    import builtins
+    with tempfile.TemporaryDirectory() as home:
+        env = Path(home) / ".claude" / "atlassian.env"
+        env.parent.mkdir()
+        env.write_text("old")
+        real_home, real_ask, real_input = Path.home, sc.ask_values, builtins.input
+
+        def boom():
+            raise AssertionError("tokens asked before the replace prompt")
+        Path.home, sc.ask_values, builtins.input = classmethod(lambda cls: Path(home)), boom, lambda _p: "n"
+        try:
+            assert sc.main([]) == 0
+        finally:
+            Path.home, sc.ask_values, builtins.input = real_home, real_ask, real_input
+        assert env.read_text() == "old"
+
+
 if __name__ == "__main__":
     failed = 0
     for name, fn in sorted(globals().items()):

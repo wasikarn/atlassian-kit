@@ -66,13 +66,24 @@ def check_expiry(home, today=None):
     return results
 
 
+def check_login(runner):
+    ok = runner(["acli", "jira", "auth", "status"]).returncode == 0
+    return ("acli login", "PASS" if ok else "FAIL",
+            "logged in" if ok else "not logged in; run `acli jira auth login` with the same site, email and Jira token")
+
+
+def _reason(proc):
+    lines = [l.strip() for l in ((proc.stderr or "") + (proc.stdout or "")).splitlines() if l.strip()]
+    return lines[-1][:200] if lines else "no message"
+
+
 def check_smoke(runner):
     results = []
     for name, args in SMOKE:
         proc = runner([sys.executable, str(SCRIPTS / "acli-rest-get.py"), *args])
         ok = proc.returncode == 0
         results.append((name, "PASS" if ok else "FAIL",
-                        "read ok" if ok else f"exit {proc.returncode}; see the message above, then rerun setup"))
+                        "read ok" if ok else f"exit {proc.returncode}: {_reason(proc)}"))
     return results
 
 
@@ -81,6 +92,8 @@ def run_checks(home=Path.home(), which=shutil.which, runner=None):
     results = [check_acli(which)]
     results += check_env_file(home)
     results += check_expiry(home)
+    if not any(status == "FAIL" for _, status, _ in results):
+        results.append(check_login(runner))
     if any(status == "FAIL" for _, status, _ in results):
         results += [(name, "SKIP", "credentials not ready") for name, _ in SMOKE]
     else:

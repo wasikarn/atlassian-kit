@@ -130,15 +130,15 @@ def main(argv=None):
         print("FATAL: only --dry-run is accepted", file=sys.stderr)
         return 2
     target = Path.home() / ".claude" / "atlassian.env"
+    if target.exists():
+        if input(f"{target} exists. Replace it? [y/N] ").strip().lower() != "y":
+            print("Kept the existing file.")
+            return 0
     try:
         values = ask_values()
     except ValueError as exc:
         print(f"FATAL: {exc}", file=sys.stderr)
         return 1
-    if target.exists():
-        if input(f"{target} exists. Replace it? [y/N] ").strip().lower() != "y":
-            print("Kept the existing file.")
-            return 0
     try:
         expiries = ask_expiries()
     except ValueError as exc:

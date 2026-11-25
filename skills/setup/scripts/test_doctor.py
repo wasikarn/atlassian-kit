@@ -12,8 +12,8 @@ GOOD = "ACLI_SITE=s.atlassian.net\nACLI_EMAIL=u@e.com\nACLI_JIRA_TOKEN=j\nACLI_C
 
 
 class Proc:
-    def __init__(self, code):
-        self.returncode = code
+    def __init__(self, code, stdout="", stderr=""):
+        self.returncode, self.stdout, self.stderr = code, stdout, stderr
 
 
 def home_with(text, mode=0o600):
@@ -115,6 +115,24 @@ def test_main_exit_code_ignores_warn_but_fails_on_fail():
     finally:
         sys.stdout.close()
         sys.stdout, doctor.run_checks = out, real
+
+
+def test_login_failure_is_reported_and_blocks_the_smoke():
+    ran = []
+
+    def runner(cmd):
+        ran.append(cmd)
+        return Proc(1 if cmd[:4] == ["acli", "jira", "auth", "status"] else 0)
+    res = doctor.run_checks(home=home_with(GOOD), which=lambda _c: "/x/acli", runner=runner)
+    assert status_of(res, "acli login") == "FAIL"
+    assert [s for n, s, _ in res if "smoke" in n] == ["SKIP", "SKIP"]
+    assert all(c[0] == "acli" for c in ran)
+
+
+def test_smoke_failure_shows_the_last_message_line():
+    res = doctor.check_smoke(lambda cmd: Proc(1, stderr="noise\nFATAL: scope missing\n"))
+    assert "FATAL: scope missing" in res[0][2] and "noise" not in res[0][2]
+    assert "no message" in doctor.check_smoke(lambda cmd: Proc(1))[0][2]
 
 
 if __name__ == "__main__":
