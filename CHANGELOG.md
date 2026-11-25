@@ -8,6 +8,11 @@ Pre-`1.0.0`: breaking changes may land in any `0.x` release.
 This file starts at `0.1.18` — releases before that predate the changelog. See
 `git log` for the full history back to `0.1.0`.
 
+## [0.4.32] — 2026-11-25
+
+### Added
+- `skills/setup/`: setup skill for new machines. `scripts/setup_credentials.py` writes `~/.claude/atlassian.env` (4 keys) through a hidden prompt, atomically, mode 600 on macOS and `icacls` on Windows. `scripts/doctor.py` re-runs the checks (acli, keys, permissions, Jira and Confluence read smoke). Windows ACL is not verified yet.
+
 ## [0.4.31] — 2026-11-25
 
 ### Added
