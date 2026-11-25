@@ -8,6 +8,11 @@ Pre-`1.0.0`: breaking changes may land in any `0.x` release.
 This file starts at `0.1.18` — releases before that predate the changelog. See
 `git log` for the full history back to `0.1.0`.
 
+## [0.4.33] — 2026-11-25
+
+### Added
+- `setup_credentials.py --dry-run`: lists prerequisites, the file it would write and the checks it skips. It asks nothing, writes nothing and sends nothing.
+
 ## [0.4.32] — 2026-11-25
 
 ### Added

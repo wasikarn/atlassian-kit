@@ -33,6 +33,8 @@ python3 skills/setup/scripts/setup_credentials.py
 
 It asks for the site (for example `your-site.atlassian.net`), your Atlassian email, then the two tokens through a hidden prompt. It writes `~/.claude/atlassian.env` with four keys and restricts the file to your user.
 
+To preview without changing anything, run `python3 skills/setup/scripts/setup_credentials.py --dry-run`. It lists the prerequisites, the file it would create or replace and the permissions it would set, checks only local facts (acli, Python), asks for nothing and sends nothing. Exit code 1 means a prerequisite is missing.
+
 ## 4. Verify
 
 ```

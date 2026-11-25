@@ -81,6 +81,34 @@ def test_ask_values_reads_tokens_only_through_the_secret_prompt():
                    "ACLI_JIRA_TOKEN": "JTOK", "ACLI_CONFLUENCE_TOKEN": "CTOK"}
 
 
+def test_dry_run_reports_plan_changes_nothing_and_exits_by_prerequisite():
+    with tempfile.TemporaryDirectory() as home:
+        lines, code = sc.dry_run(home=home, which=lambda _c: None)
+        text = "\n".join(lines)
+        assert code == 1 and "MISSING" in text and "would CREATE" in text and "skipped:" in text
+        assert list(Path(home).iterdir()) == [], "dry run wrote something"
+        (Path(home) / ".claude").mkdir()
+        (Path(home) / ".claude" / "atlassian.env").write_text("keep\n")
+        lines, code = sc.dry_run(home=home, which=lambda _c: "/x/acli")
+        assert code == 0 and "would REPLACE" in "\n".join(lines)
+        assert (Path(home) / ".claude" / "atlassian.env").read_text() == "keep\n"
+
+
+def test_main_dry_run_never_prompts_and_rejects_other_args():
+    real_secret = sc.getpass.getpass
+
+    def no_prompt(*_a, **_k):
+        raise AssertionError("dry run prompted")
+    import builtins
+    builtins_input = builtins.input
+    builtins.input, sc.getpass.getpass = no_prompt, no_prompt
+    try:
+        assert sc.main(["--dry-run"]) in (0, 1)
+        assert sc.main(["--bogus"]) == 2
+    finally:
+        builtins.input, sc.getpass.getpass = builtins_input, real_secret
+
+
 if __name__ == "__main__":
     failed = 0
     for name, fn in sorted(globals().items()):

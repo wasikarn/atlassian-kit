@@ -7,6 +7,7 @@ Tokens never go in argv, never get printed, and the file is created 0600 (POSIX)
 import getpass
 import os
 import re
+import shutil
 import subprocess
 import sys
 import tempfile
@@ -84,7 +85,30 @@ def ask_values(input_fn=input, secret_fn=getpass.getpass):
             "ACLI_JIRA_TOKEN": jira, "ACLI_CONFLUENCE_TOKEN": confluence}
 
 
-def main():
+def dry_run(home=None, which=shutil.which):
+    """Describe what setup would do from local facts only: no prompt, no write, no install, no login, no network."""
+    target = Path(home or Path.home()) / ".claude" / "atlassian.env"
+    acli = which("acli")
+    lines = [
+        "DRY RUN: nothing is asked, written, installed or sent.",
+        f"{'ok     ' if acli else 'MISSING'} acli on PATH" + ("" if acli else " (install it from the official Atlassian download)"),
+        f"ok      Python {sys.version_info.major}.{sys.version_info.minor}",
+        f"would {'REPLACE (after a y/N prompt)' if target.exists() else 'CREATE'}: {target} with keys {', '.join(KEYS)}",
+        "would set permissions: " + ("icacls, current user only" if os.name == "nt" else "chmod 600"),
+        "skipped: token and site checks (need credentials), Jira and Confluence reads (need network); run doctor.py after setup",
+    ]
+    return lines, (0 if acli else 1)
+
+
+def main(argv=None):
+    args = sys.argv[1:] if argv is None else argv
+    if args == ["--dry-run"]:
+        lines, code = dry_run()
+        print("\n".join(lines))
+        return code
+    if args:
+        print("FATAL: only --dry-run is accepted", file=sys.stderr)
+        return 2
     target = Path.home() / ".claude" / "atlassian.env"
     try:
         values = ask_values()
