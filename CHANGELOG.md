@@ -8,6 +8,11 @@ Pre-`1.0.0`: breaking changes may land in any `0.x` release.
 This file starts at `0.1.18` — releases before that predate the changelog. See
 `git log` for the full history back to `0.1.0`.
 
+## [0.4.31] — 2026-11-25
+
+### Added
+- `skills/ops/credentials.template`: commented template for `~/.claude/atlassian.env` (5 keys, the scopes each token needs, optional overrides). No secrets.
+
 ## [0.4.30] — 2026-11-25
 
 ### Added
