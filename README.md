@@ -49,6 +49,14 @@ not a wall. The hook runs only while the plugin is enabled; to cover
 sessions where it isn't, register the same script as a user-level PreToolUse hook (matcher and
 settings in `hooks/hooks.json`).
 
+## Tickets from the Jira form
+
+A Bug submitted through the APPR "แจ้งบั๊ก" form reaches Jira as plain text, because a form cannot
+prefill a template and no Jira Automation rule is used (the site is near its monthly run limit).
+At triage, someone with this plugin runs `python3 skills/ops/scripts/acli-reformat.py KEY` to
+preview and `--apply` to write the headings and lists. A line `Env: x` in the description also
+sets the Environment field.
+
 ## Prerequisites
 
 This plugin is **not self-contained**. It needs, installed separately:
