@@ -20,15 +20,15 @@ or connection error once the write started, a 5xx, or a read-back that fails or 
 Do not re-run `apply` at 3 before checking.
 
 Credentials come from a mode-600 env file: ACLI_REST_WRITE_SITE, ACLI_REST_WRITE_EMAIL,
-ACLI_REST_WRITE_JIRA_TOKEN, ACLI_REST_WRITE_CONFLUENCE_TOKEN (plus ACLI_REST_WRITE_CONFLUENCE_FILE_TOKEN,
-a classic token with only write:confluence-file, for attachment-upload). The default file is ~/.claude/atlassian.env
+ACLI_REST_WRITE_JIRA_TOKEN, ACLI_REST_WRITE_CONFLUENCE_TOKEN (plus ACLI_REST_WRITE_CONFLUENCE_FILE_TOKEN
+for attachment-upload: the granular Confluence token or a classic token with only write:confluence-file). The default file is ~/.claude/atlassian.env
 and must agree with `acli jira auth status`. --env-file names an alternate target (a test site); it must
 be a different site than acli's, and the preview labels it ALTERNATE TARGET. The acli-guard hook
 denies every subagent call of this script; approving a preview covers calls made through it and
 nothing else.
 Operations: Confluence page-create / page-fetch (read-only; writes the base+adf files) / page-update /
 page-delete (to the trash, never purge) / attachment-upload (one image, v1 multipart);
-Jira issue-set / version-create / version-edit / version-delete / issue-delete / filter-create / board-columns-set / board-delete / board-property-set.
+Jira issue-set / version-create / version-edit / version-delete / issue-delete / filter-create / board-delete / board-property-set.
 """
 
 import datetime

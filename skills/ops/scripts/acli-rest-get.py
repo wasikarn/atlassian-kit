@@ -51,17 +51,16 @@ USAGE = ("usage: acli-rest-get.py transitions ISSUE-KEY | find-user QUERY | "
          "createmeta PROJECT-KEY [ISSUETYPE-ID] | api <jira|confluence> <PATH> | jira-ops [TEXT ...] | "
          "confluence-ops [TEXT ...]")
 # Jira Software reads outside /rest/api/3, GET only, each matched whole: board list/get/configuration/properties/
-# features, and the internal greenhopper board model (it has status names; the agile configuration has only ids).
+# features. The internal greenhopper API is not reachable (no public scope, payloads unverified).
 _Q = r"(\?[A-Za-z0-9_=&%,-]*)?"
 AGILE_READ_RES = tuple(re.compile(p) for p in (
     r"/rest/agile/1[.]0/board" + _Q,
     r"/rest/agile/1[.]0/board/[0-9]+" + _Q,
     r"/rest/agile/1[.]0/board/[0-9]+/(configuration|properties|features)",
     r"/rest/agile/1[.]0/board/[0-9]+/properties/[A-Za-z0-9_-]+",
-    r"/rest/greenhopper/1[.]0/rapidviewconfig/editmodel[?]rapidViewId=[0-9]+",
 ))
 API_PATH_RE = re.compile(r"^/(rest/api/3/|wiki/api/v2/|wiki/rest/api/)[A-Za-z0-9_?&=%,/-]*$")
-V1_PREFIX = "/wiki/rest/api/"  # Confluence v1 reads use the classic-scope token, like the v1 writes
+V1_PREFIX = "/wiki/rest/api/"  # Confluence v1 reads use the v1 token key, like the v1 writes
 V1_TOKEN_KEY = "ACLI_REST_WRITE_CONFLUENCE_V1_TOKEN"
 
 

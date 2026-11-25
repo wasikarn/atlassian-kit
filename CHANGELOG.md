@@ -8,6 +8,16 @@ Pre-`1.0.0`: breaking changes may land in any `0.x` release.
 This file starts at `0.1.18` — releases before that predate the changelog. See
 `git log` for the full history back to `0.1.0`.
 
+## [0.4.28] — 2026-11-25
+
+### Removed
+
+- `board-columns-set` and the read of Jira's internal greenhopper `editmodel`. No public API sets board columns, the PUT payload was never verified on a live board, and a scoped API token has no scope for that endpoint, so the operation could not run under the planned one-key-per-product tokens. Set columns in the board UI. `board-delete`, `board-property-set` and the agile board reads are unchanged. `api jira /rest/greenhopper/...` is now refused like any other path outside the allowed set.
+
+### Changed
+
+- Docs and comments no longer say Confluence v1 reads and attachment upload need classic-scope tokens. A live run on 2026-11-25 passed v1 read, attachment upload, page update and page delete with one granular token (read:space, read:page, read:attachment, read:content-details, write:page, write:attachment, delete:page). The env keys `ACLI_REST_WRITE_CONFLUENCE_V1_TOKEN` and `ACLI_REST_WRITE_CONFLUENCE_FILE_TOKEN` stay (code unchanged) and can hold that same token. Generic v1 operations outside those scopes still need more scopes or a classic token.
+
 ## [0.4.27] — 2026-11-25
 
 ### Fixed

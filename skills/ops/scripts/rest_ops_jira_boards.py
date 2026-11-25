@@ -1,4 +1,4 @@
-"""Jira Software operations of acli-rest-write: filter-create, board-columns-set, board-delete, board-property-set."""
+"""Jira Software operations of acli-rest-write: filter-create, board-delete, board-property-set."""
 
 import json
 import re
@@ -62,15 +62,9 @@ OPERATIONS["filter-create"] = {"product": "jira", "validate": _validate_filter_c
                                "readback": _readback_filter_create}
 
 
-# --- operations: board-columns-set, board-delete, board-property-set (Jira Software) ----------
-# No public API sets board columns, so board-columns-set uses Jira's internal greenhopper API. The board model
-# (column ids, status ids AND names) is read from GET .../rapidviewconfig/editmodel; the PUT payload shape comes
-# from third-party documentation and is UNVERIFIED until the first apply, which the plan says.
-
+# --- operations: board-delete, board-property-set (Jira Software) ----------
 BOARD_ID_RE = re.compile(r"^[0-9]{1,9}$")
 PROP_KEY_RE = re.compile(r"^[A-Za-z0-9_-]{1,255}$")  # no dot: ".." must not reach the URL
-EDITMODEL_PATH = "/rest/greenhopper/1.0/rapidviewconfig/editmodel"
-COLUMNS_PATH = "/rest/greenhopper/1.0/rapidviewconfig/columns"
 
 
 def _board_flag(flags, usage):
@@ -78,111 +72,6 @@ def _board_flag(flags, usage):
     if value is None or not BOARD_ID_RE.match(str(value)):
         raise Fatal(f"usage: {usage}")
     return str(value)
-
-
-def _parse_columns(raw):
-    try:
-        cols = json.loads(raw) if isinstance(raw, str) else raw
-    except ValueError:
-        raise Fatal("--columns is not valid JSON") from None
-    if not isinstance(cols, list) or not cols:
-        raise Fatal('--columns must be a non-empty JSON list: [{"name": "To Do", "statuses": ["To Do"]}, ...]')
-    out, names, seen = [], set(), set()
-    for c in cols:
-        if not isinstance(c, dict) or set(c) != {"name", "statuses"}:
-            raise Fatal("each column needs exactly the keys name and statuses")
-        name, sts = c["name"], c["statuses"]
-        if not isinstance(name, str) or not name.strip():
-            raise Fatal("a column name must be a non-empty string")
-        if not isinstance(sts, list) or not all(isinstance(s, str) and s.strip() for s in sts):
-            raise Fatal(f"statuses of column {name!r} must be a list of non-empty status names")
-        if name.strip().lower() in names:
-            raise Fatal(f"column name {name!r} appears twice")
-        names.add(name.strip().lower())
-        for s in sts:
-            if s.strip().lower() in seen:
-                raise Fatal(f"status {s!r} is mapped to more than one column")
-            seen.add(s.strip().lower())
-        out.append({"name": name.strip(), "statuses": [s.strip() for s in sts]})
-    return out
-
-
-def _validate_board_columns_set(flags, pos=()):
-    usage = "board-columns-set --board <id> --columns '<JSON list of {name, statuses}>'"
-    if pos:
-        raise Fatal(f"board-columns-set takes no positional arguments: {pos[0]!r}")
-    _check_flags(flags, {"board", "columns"}, "board-columns-set")
-    board = _board_flag(flags, usage)
-    raw = _one(flags, "columns")
-    if raw is None:
-        raise Fatal(f"usage: {usage}")
-    return {"board": board, "columns": canonical(_parse_columns(raw))}
-
-
-def _plan_board_columns_set(get, args):
-    model = get(EDITMODEL_PATH, {"rapidViewId": args["board"]})
-    rl = model.get("rapidListConfig") if isinstance(model, dict) else None
-    if not isinstance(rl, dict) or not isinstance(rl.get("mappedColumns"), list):
-        raise Fatal("the board model has no rapidListConfig.mappedColumns; the internal API may have changed")
-    current = [{"id": c.get("id"), "name": c.get("name"), "kan": bool(c.get("isKanPlanColumn")),
-                "statuses": [{"id": str(s.get("id")), "name": s.get("name")} for s in c.get("mappedStatuses") or []]}
-               for c in rl["mappedColumns"]]
-    unmapped = [{"id": str(s.get("id")), "name": s.get("name")} for s in rl.get("unmappedStatuses") or []]
-    by_name = {}
-    for s in [s for c in current for s in c["statuses"]] + unmapped:
-        by_name.setdefault(str(s["name"]).lower(), []).append(s["id"])
-    old = {str(c["name"]).lower(): c for c in current}
-    wanted, cols, new_ids = json.loads(args["columns"]), [], set()
-    for w in wanted:
-        ids = []
-        for sname in w["statuses"]:
-            found = by_name.get(sname.lower(), [])
-            if not found:
-                raise Fatal(f"status {sname!r} is not on board {args['board']} (statuses there: "
-                            f"{', '.join(sorted({str(s['name']) for c in current for s in c['statuses']} | {str(u['name']) for u in unmapped}))})")
-            if len(found) > 1:
-                raise Fatal(f"status name {sname!r} matches {len(found)} statuses on the board; cannot choose")
-            ids.append(found[0])
-        new_ids.update(ids)
-        prev = old.get(w["name"].lower())
-        col = {"name": w["name"], "isKanPlanColumn": bool(prev and prev["kan"]), "mappedStatuses": [{"id": i} for i in ids]}
-        if prev:
-            col["id"] = prev["id"]
-        cols.append(col)
-    leaving = [str(s["name"]) for c in current for s in c["statuses"] if s["id"] not in new_ids]
-    base = {"board": args["board"], "current": current, "new": wanted, "willUnmap": leaving}
-    return base, {"rapidViewId": int(args["board"]), "mappedColumns": cols}
-
-
-def _describe_board_columns_set(base, body):
-    def show(cols):
-        return "; ".join(f"{c['name']}[{', '.join(s if isinstance(s, str) else str(s['name']) for s in c['statuses'])}]"
-                         for c in cols)
-    return [f"OVERWRITES the whole column set of board {base['board']} ({len(base['current'])} columns now, {len(base['new'])} after)",
-            f"current: {show(base['current'])}",
-            f"new: {show(base['new'])}",
-            "statuses leaving the board: " + (", ".join(base["willUnmap"]) if base["willUnmap"] else "none"),
-            "UNVERIFIED: the internal greenhopper payload shape has not been confirmed on this site; apply it on one "
-            "board first and check the board in the UI (columns can be set back there)."]
-
-
-def _send_board_columns_set(http, args, base, body_text):
-    return http("PUT", COLUMNS_PATH, body_text.encode(), "application/json", {"X-Atlassian-Token": "no-check"})
-
-
-def _readback_board_columns_set(get, args, base, body_text, result):
-    cfg = get(f"/rest/agile/1.0/board/{args['board']}/configuration", {})
-    cols = (cfg.get("columnConfig") or {}).get("columns") or []
-    want = json.loads(body_text)["mappedColumns"]
-    if [c.get("name") for c in cols] != [w["name"] for w in want]:
-        return False
-    return all({str(s.get("id")) for s in c.get("statuses") or []} == {str(m["id"]) for m in w["mappedStatuses"]}
-               for c, w in zip(cols, want))
-
-
-OPERATIONS["board-columns-set"] = {"product": "jira", "validate": _validate_board_columns_set,
-                                   "plan": _plan_board_columns_set, "send": _send_board_columns_set,
-                                   "readback": _readback_board_columns_set, "describe": _describe_board_columns_set}
 
 
 def _validate_board_delete(flags, pos=()):

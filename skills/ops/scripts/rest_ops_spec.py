@@ -38,7 +38,7 @@ CONFLUENCE_V1 = SimpleNamespace(
     handwritten={"createAttachment": "attachment-upload"},
     find="acli-rest-get.py confluence-ops <text>", read="acli-rest-get.py api confluence /wiki/rest/api{path}",
     self_marker="/wiki/rest/api", self_keep=False,
-    # these reach resolve_target in acli-rest-write.py: the v1 base for reads and sends, one classic-scope token
+    # these reach resolve_target in acli-rest-write.py: the v1 base for reads and sends, one token key (granular or classic scopes)
     extra={"send_api": "/wiki/rest/api", "read_api": "/wiki/rest/api",
            "send_token_key": "ACLI_REST_WRITE_CONFLUENCE_V1_TOKEN",
            "read_token_key": "ACLI_REST_WRITE_CONFLUENCE_V1_TOKEN"})

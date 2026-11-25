@@ -384,7 +384,7 @@ def test_tokens_never_reach_stdout_or_stderr_on_error_paths():
 
 
 def test_registered_operations_match_the_plan_phases_so_far():
-    assert sorted(rw.OPERATIONS) == ["attachment-upload", "board-columns-set", "board-delete", "board-property-set", "confluence-call", "confluence-v1-call", "filter-create", "issue-delete", "issue-set", "jira-call", "page-create", "page-delete", "page-fetch", "page-update",
+    assert sorted(rw.OPERATIONS) == ["attachment-upload", "board-delete", "board-property-set", "confluence-call", "confluence-v1-call", "filter-create", "issue-delete", "issue-set", "jira-call", "page-create", "page-delete", "page-fetch", "page-update",
                                      "version-create", "version-delete", "version-edit"], sorted(rw.OPERATIONS)
     for name, op in rw.OPERATIONS.items():
         expected = {"product", "validate", "plan", "send", "readback"} if name != "page-fetch" else {"planOnly", "product", "validate", "plan"}
@@ -1437,7 +1437,6 @@ def _stored_args_for_every_operation():
         "issue-set": ({"key": "APPR-1", "priority": "High"}, ()),
         "issue-delete": ({"key": "APPR-1"}, ()),
         "filter-create": ({"name": "seed", "jql": "project = APPR"}, ()),
-        "board-columns-set": ({"board": "1", "columns": "[{\"name\": \"a\", \"statuses\": []}]"}, ()),
         "board-delete": ({"board": "1"}, ()),
         "confluence-call": ({"op": "createFolder", "body": "{\"spaceId\": \"1\"}"}, ()),
         "confluence-v1-call": ({"op": "createSpace", "body": "{\"key\": \"X\", \"name\": \"n\"}"}, ()),
@@ -1614,115 +1613,7 @@ def test_issue_delete_refuses_a_delete_subtasks_value_other_than_true():
         assert code == 1 and op.calls == [], (value, err)
 
 
-# --- board operations: columns (internal greenhopper API), delete, property ---------------
-
-def _board_model(extra_unmapped=(), dup_open=False):
-    todo = [{"id": "10", "name": "Open"}, {"id": "11", "name": "To Do"}]
-    if dup_open:
-        todo.append({"id": "12", "name": "open"})
-    return {"rapidListConfig": {
-        "mappedColumns": [
-            {"id": 1, "name": "Backlog", "isKanPlanColumn": True, "mappedStatuses": []},
-            {"id": 2, "name": "To Do", "isKanPlanColumn": False, "mappedStatuses": todo},
-            {"id": 3, "name": "Done", "isKanPlanColumn": False,
-             "mappedStatuses": [{"id": "20", "name": "Done"}, {"id": "21", "name": "Resolved"}]}],
-        "unmappedStatuses": [{"id": "30", "name": "HOLD"}, *extra_unmapped]}}
-
-
-def _columns_routes(state):
-    def route(req):
-        u, m = urllib.parse.urlsplit(req.full_url).path, req.get_method()
-        if m == "GET" and u.endswith("/rest/greenhopper/1.0/rapidviewconfig/editmodel"):
-            return json.dumps(state.get("model") or _board_model())
-        if m == "PUT" and u.endswith("/rest/greenhopper/1.0/rapidviewconfig/columns"):
-            state["put"] = json.loads(req.data.decode())
-            state["headers"] = {k.lower(): v for k, v in req.header_items()}
-            return "{}"
-        if m == "GET" and u.endswith("/rest/agile/1.0/board/10103/configuration"):
-            cols = state["cfg"] if "cfg" in state else [
-                {"name": c["name"], "statuses": [{"id": s["id"]} for s in c["mappedStatuses"]]}
-                for c in state["put"]["mappedColumns"]]
-            return json.dumps({"columnConfig": {"columns": cols}})
-        raise AssertionError(f"unexpected {m} {u}")
-    return [(JIRA, route)]
-
-
-WANTED = [{"name": "Backlog", "statuses": []}, {"name": "To Do", "statuses": ["To Do", "HOLD"]},
-          {"name": "Done", "statuses": ["done", "Resolved"]}, {"name": "Review", "statuses": []}]
-
-
-def _columns_plan(state, wanted=WANTED):
-    return run(["plan", "board-columns-set", "--board", "10103", "--columns", json.dumps(wanted)],
-               _columns_routes(state) + [tenant_route()])
-
-
-def test_board_columns_set_refuses_bad_arguments_before_any_request():
-    good = json.dumps(WANTED)
-    for argv in (["--columns", good], ["--board", "abc", "--columns", good], ["--board", "1"],
-                 ["--board", "1", "--columns", "not json"], ["--board", "1", "--columns", "[]"],
-                 ["--board", "1", "--columns", json.dumps([{"name": "a", "statuses": []}, {"name": "A", "statuses": []}])],
-                 ["--board", "1", "--columns", json.dumps([{"name": "a", "statuses": ["x"]}, {"name": "b", "statuses": ["X"]}])],
-                 ["--board", "1", "--columns", json.dumps([{"name": "a", "statuses": [], "id": 3}])],
-                 ["--board", "1", "--columns", good, "--force", "true"]):
-        code, _, err, op = run(["plan", "board-columns-set", *argv], [tenant_route()])
-        assert code == 1 and op.calls == [], argv
-
-
-def test_board_columns_set_refuses_an_unknown_or_ambiguous_status_name():
-    state = {}
-    code, _, err, _ = _columns_plan(state, [{"name": "a", "statuses": ["Nope"]}])
-    assert code == 1 and "Nope" in err and "put" not in state
-    state = {"model": _board_model(dup_open=True)}
-    code, _, err, _ = _columns_plan(state, [{"name": "a", "statuses": ["Open"]}])
-    assert code == 1 and "cannot choose" in err
-
-
-def test_board_columns_set_plan_shows_current_new_and_leaving_statuses_and_sends_nothing():
-    state = {}
-    code, out, err, _ = _columns_plan(state)
-    assert code == 0, err
-    assert "put" not in state
-    assert "OVERWRITES the whole column set of board 10103 (3 columns now, 4 after)" in out
-    assert "current: Backlog[]; To Do[Open, To Do]; Done[Done, Resolved]" in out
-    assert "new: Backlog[]; To Do[To Do, HOLD]; Done[done, Resolved]; Review[]" in out
-    assert "statuses leaving the board: Open" in out
-    assert "UNVERIFIED" in out
-
-
-def test_board_columns_set_apply_puts_the_mapped_columns_and_verifies_by_read_back():
-    state = {}
-    code, out, err, _ = _columns_plan(state)
-    assert code == 0, err
-    code, out2, err2, _ = run(["apply", str(request_path(out)), "--confirm", confirm_of(out)],
-                              _columns_routes(state) + [tenant_route()])
-    assert code == 0, err2
-    assert state["put"] == {"rapidViewId": 10103, "mappedColumns": [
-        {"name": "Backlog", "isKanPlanColumn": True, "mappedStatuses": [], "id": 1},
-        {"name": "To Do", "isKanPlanColumn": False, "mappedStatuses": [{"id": "11"}, {"id": "30"}], "id": 2},
-        {"name": "Done", "isKanPlanColumn": False, "mappedStatuses": [{"id": "20"}, {"id": "21"}], "id": 3},
-        {"name": "Review", "isKanPlanColumn": False, "mappedStatuses": []}]}
-    assert state["headers"]["x-atlassian-token"] == "no-check"
-
-
-def test_board_columns_set_fails_when_the_read_back_does_not_match():
-    state = {"cfg": []}
-    code, out, err, _ = _columns_plan(state)
-    assert code == 0, err
-    code, _, _, _ = run(["apply", str(request_path(out)), "--confirm", confirm_of(out)],
-                        _columns_routes(state) + [tenant_route()])
-    assert code != 0
-
-
-def test_board_columns_set_apply_refuses_when_the_board_changed_after_the_plan():
-    state = {}
-    code, out, err, _ = _columns_plan(state)
-    assert code == 0, err
-    model = _board_model()
-    model["rapidListConfig"]["mappedColumns"][1]["mappedStatuses"].append({"id": "31", "name": "NEW"})
-    state["model"] = model
-    code, _, err2, _ = run(["apply", str(request_path(out)), "--confirm", confirm_of(out)],
-                           _columns_routes(state) + [tenant_route()])
-    assert code != 0 and "put" not in state, err2
+# --- board operations: delete, property ---------------------------------------------------------
 
 
 def _board_routes(state):
