@@ -111,7 +111,9 @@ def cloud_id(host, opener):
     return cid
 
 
-PRODUCT_TOKEN_KEYS = {
+ENV_ALIASES = {
+    "ACLI_SITE": ("ACLI_REST_READ_SITE", "ACLI_REST_WRITE_SITE"),
+    "ACLI_EMAIL": ("ACLI_REST_READ_EMAIL", "ACLI_REST_WRITE_EMAIL"),
     "ACLI_JIRA_TOKEN": ("ACLI_REST_READ_TOKEN", "ACLI_REST_WRITE_JIRA_TOKEN"),
     "ACLI_CONFLUENCE_TOKEN": ("ACLI_REST_WRITE_CONFLUENCE_TOKEN", "ACLI_REST_WRITE_CONFLUENCE_V1_TOKEN",
                               "ACLI_REST_WRITE_CONFLUENCE_FILE_TOKEN"),
@@ -128,7 +130,7 @@ def read_env_file(env_file):
         raise Fatal(f"token file {env_file} not found (see the script docstring)") from None
     pairs = re.findall(r"^\s*(?:export\s+)?([A-Z_][A-Z0-9_]*)=(.*?)\s*$", text, re.M)
     values = {k: v[1:-1] if len(v) > 1 and v[0] == v[-1] and v[0] in "\"'" else v for k, v in pairs}
-    for product_key, keys in PRODUCT_TOKEN_KEYS.items():  # one key per product; a per-operation key still wins
+    for product_key, keys in ENV_ALIASES.items():  # one key per product or identity part; a per-operation key still wins
         for key in keys:
             if product_key in values:
                 values.setdefault(key, values[product_key])

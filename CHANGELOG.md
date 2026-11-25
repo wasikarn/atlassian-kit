@@ -8,6 +8,11 @@ Pre-`1.0.0`: breaking changes may land in any `0.x` release.
 This file starts at `0.1.18` — releases before that predate the changelog. See
 `git log` for the full history back to `0.1.0`.
 
+## [0.4.30] — 2026-11-25
+
+### Added
+- \`ACLI_SITE\` and \`ACLI_EMAIL\` fill \`ACLI_REST_READ_SITE/EMAIL\` and \`ACLI_REST_WRITE_SITE/EMAIL\` when the file does not set them, so \`atlassian.env\` can hold 4 keys: \`ACLI_SITE\`, \`ACLI_EMAIL\`, \`ACLI_JIRA_TOKEN\`, \`ACLI_CONFLUENCE_TOKEN\` (plus \`ACLI_LOGIN_TOKEN\`).
+
 ## [0.4.29] — 2026-11-25
 
 ### Added

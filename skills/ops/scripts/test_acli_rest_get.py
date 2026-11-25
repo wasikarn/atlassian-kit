@@ -677,6 +677,12 @@ def test_two_product_keys_fill_the_per_operation_token_keys_and_a_specific_key_w
     assert got["ACLI_REST_WRITE_CONFLUENCE_FILE_TOKEN"] == "F"
 
 
+def test_one_site_and_one_email_key_fill_the_read_and_write_pairs():
+    got = rg.read_env_file(write_env("ACLI_SITE=s.atlassian.net\nACLI_EMAIL=a@b.c\nACLI_REST_WRITE_EMAIL=other@b.c\n"))
+    assert got["ACLI_REST_READ_SITE"] == got["ACLI_REST_WRITE_SITE"] == "s.atlassian.net"
+    assert got["ACLI_REST_READ_EMAIL"] == "a@b.c" and got["ACLI_REST_WRITE_EMAIL"] == "other@b.c"
+
+
 if __name__ == "__main__":
     failed = 0
     tests = [(n, f) for n, f in sorted(globals().items()) if n.startswith("test_") and callable(f)]
