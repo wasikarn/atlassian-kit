@@ -5,14 +5,17 @@ Writes ~/.claude/atlassian.env with four keys: ACLI_SITE, ACLI_EMAIL, ACLI_JIRA_
 Tokens never go in argv, never get printed, and the file is created 0600 (POSIX) or limited to the current user (Windows, icacls).
 """
 import getpass
+import json
 import os
 import re
 import shutil
 import subprocess
 import sys
 import tempfile
+from datetime import date
 from pathlib import Path
 
+META_NAME = "atlassian-kit-meta.json"  # non-secret expiry dates; doctor.py reads the same name
 KEYS = ("ACLI_SITE", "ACLI_EMAIL", "ACLI_JIRA_TOKEN", "ACLI_CONFLUENCE_TOKEN")
 SITE_RE = re.compile(r"^[a-z0-9-]+\.atlassian\.net$")
 EMAIL_RE = re.compile(r"^[^\s@]+@[^\s@]+\.[^\s@]+$")
@@ -42,6 +45,22 @@ def check_token(raw):
     if not token or any(c.isspace() or c in "'\"=#" for c in token):
         raise ValueError("token is empty or contains spaces, quotes, '=' or '#'; paste it again")
     return token
+
+
+def check_expiry(raw, today=None):
+    d = date.fromisoformat(raw.strip())
+    if d <= (today or date.today()):
+        raise ValueError("expiry must be a future date (YYYY-MM-DD)")
+    return d.isoformat()
+
+
+def ask_expiries(input_fn=input, today=None):
+    return {p: check_expiry(input_fn(f"{p.capitalize()} token expiry date (YYYY-MM-DD): "), today)
+            for p in ("jira", "confluence")}
+
+
+def write_meta(path, expiries):
+    Path(path).write_text(json.dumps({f"{p}_expires": d for p, d in expiries.items()}, indent=2) + "\n", encoding="utf-8")
 
 
 def render(values):
@@ -94,6 +113,7 @@ def dry_run(home=None, which=shutil.which):
         f"{'ok     ' if acli else 'MISSING'} acli on PATH" + ("" if acli else " (install it from the official Atlassian download)"),
         f"ok      Python {sys.version_info.major}.{sys.version_info.minor}",
         f"would {'REPLACE (after a y/N prompt)' if target.exists() else 'CREATE'}: {target} with keys {', '.join(KEYS)}",
+        f"would write expiry dates (not secret) to {target.parent / META_NAME}",
         "would set permissions: " + ("icacls, current user only" if os.name == "nt" else "chmod 600"),
         "skipped: token and site checks (need credentials), Jira and Confluence reads (need network); run doctor.py after setup",
     ]
@@ -119,7 +139,13 @@ def main(argv=None):
         if input(f"{target} exists. Replace it? [y/N] ").strip().lower() != "y":
             print("Kept the existing file.")
             return 0
+    try:
+        expiries = ask_expiries()
+    except ValueError as exc:
+        print(f"FATAL: {exc}", file=sys.stderr)
+        return 1
     write_env(target, values)
+    write_meta(target.parent / META_NAME, expiries)
     print(f"Wrote {target} with {len(KEYS)} keys (values not shown).")
     return 0
 

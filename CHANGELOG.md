@@ -8,6 +8,11 @@ Pre-`1.0.0`: breaking changes may land in any `0.x` release.
 This file starts at `0.1.18` — releases before that predate the changelog. See
 `git log` for the full history back to `0.1.0`.
 
+## [0.4.34] — 2026-11-25
+
+### Added
+- `setup_credentials.py` asks for each token's expiry date and saves them to `~/.claude/atlassian-kit-meta.json` (no secrets). `doctor.py` reports PASS, WARN (30 days or less) or FAIL (past); with no file it prints SKIP. The dates are typed by the user, not read from Atlassian.
+
 ## [0.4.33] — 2026-11-25
 
 ### Added

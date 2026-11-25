@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 """Behaviour checks for setup_credentials.py (plain asserts, no framework)."""
+import json
 import os
 import stat
 import sys
@@ -85,7 +86,7 @@ def test_dry_run_reports_plan_changes_nothing_and_exits_by_prerequisite():
     with tempfile.TemporaryDirectory() as home:
         lines, code = sc.dry_run(home=home, which=lambda _c: None)
         text = "\n".join(lines)
-        assert code == 1 and "MISSING" in text and "would CREATE" in text and "skipped:" in text
+        assert code == 1 and "MISSING" in text and "would CREATE" in text and "skipped:" in text and sc.META_NAME in text
         assert list(Path(home).iterdir()) == [], "dry run wrote something"
         (Path(home) / ".claude").mkdir()
         (Path(home) / ".claude" / "atlassian.env").write_text("keep\n")
@@ -107,6 +108,25 @@ def test_main_dry_run_never_prompts_and_rejects_other_args():
         assert sc.main(["--bogus"]) == 2
     finally:
         builtins.input, sc.getpass.getpass = builtins_input, real_secret
+
+
+def test_expiry_must_be_a_real_future_date_and_is_saved_without_secrets():
+    from datetime import date
+    today = date(2026, 11, 25)
+    assert sc.check_expiry(" 2027-04-30 ", today) == "2027-04-30"
+    for bad in ("2026-11-25", "2020-01-01", "tomorrow", "30/04/2027", ""):
+        try:
+            sc.check_expiry(bad, today)
+        except ValueError:
+            continue
+        raise AssertionError(bad)
+    answers = iter(["2027-04-30", "2027-05-01"])
+    got = sc.ask_expiries(input_fn=lambda _p: next(answers), today=today)
+    assert got == {"jira": "2027-04-30", "confluence": "2027-05-01"}
+    with tempfile.TemporaryDirectory() as d:
+        p = Path(d) / sc.META_NAME
+        sc.write_meta(p, got)
+        assert json.loads(p.read_text()) == {"jira_expires": "2027-04-30", "confluence_expires": "2027-05-01"}
 
 
 if __name__ == "__main__":

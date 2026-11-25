@@ -79,6 +79,44 @@ def test_all_green_path_passes_end_to_end():
     assert [s for n, s, _ in res if "smoke" in n] == ["PASS", "PASS"]
 
 
+def meta_home(jira, conf):
+    d = tempfile.mkdtemp()
+    (Path(d) / ".claude").mkdir()
+    (Path(d) / ".claude" / doctor.META_NAME).write_text('{"jira_expires": "%s", "confluence_expires": "%s"}' % (jira, conf))
+    return d
+
+
+def test_expiry_passes_warns_and_fails_by_days_left():
+    from datetime import date
+    res = doctor.check_expiry(meta_home("2027-04-30", "2026-12-10"), today=date(2026, 11, 25))
+    assert [s for _, s, _ in res] == ["PASS", "WARN"]
+    res = doctor.check_expiry(meta_home("2026-11-25", "2026-11-26"), today=date(2026, 11, 25))
+    assert [s for _, s, _ in res] == ["WARN", "WARN"]
+    res = doctor.check_expiry(meta_home("2026-11-24", "2027-04-30"), today=date(2026, 11, 25))
+    assert [s for _, s, _ in res] == ["FAIL", "PASS"] and "expired 1 days ago" in res[0][2]
+
+
+def test_expiry_is_skipped_without_dates_and_fails_on_a_broken_file():
+    assert doctor.check_expiry(tempfile.mkdtemp())[0][1] == "SKIP"
+    d = meta_home("x", "y")
+    assert doctor.check_expiry(d)[0][1] == "FAIL"
+    (Path(d) / ".claude" / doctor.META_NAME).write_text("{}")
+    assert doctor.check_expiry(d)[0][1] == "FAIL"
+
+
+def test_main_exit_code_ignores_warn_but_fails_on_fail():
+    real, out = doctor.run_checks, sys.stdout
+    try:
+        sys.stdout = open(os.devnull, "w")
+        doctor.run_checks = lambda: [("a", "WARN", "x"), ("b", "PASS", "y")]
+        assert doctor.main() == 0
+        doctor.run_checks = lambda: [("a", "WARN", "x"), ("b", "FAIL", "y")]
+        assert doctor.main() == 1
+    finally:
+        sys.stdout.close()
+        sys.stdout, doctor.run_checks = out, real
+
+
 if __name__ == "__main__":
     failed = 0
     for name, fn in sorted(globals().items()):
